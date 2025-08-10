@@ -4,11 +4,11 @@ import (
 	"testing"
 )
 
-func TestTemplate_GetDisplayNam(t *testing.T) {
+func TestTemplate_GetDisplayName(t *testing.T) {
 	tests := []struct {
-		name     string
-		template Template
-		want     string
+		name        string
+		template    Template
+		expected    string
 	}{
 		{
 			name: "説明文ありの場合",
@@ -16,7 +16,7 @@ func TestTemplate_GetDisplayNam(t *testing.T) {
 				Name:        "test-template",
 				Description: "テストテンプレート",
 			},
-			want: "test-template - テストテンプレート",
+			expected: "test-template - テストテンプレート",
 		},
 		{
 			name: "説明文なしの場合",
@@ -24,16 +24,16 @@ func TestTemplate_GetDisplayNam(t *testing.T) {
 				Name:        "test-template",
 				Description: "",
 			},
-			want: "test-template",
+			expected: "test-template",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.template.GetDisplayName(); got != tt.want {
-				t.Errorf("Template.GetDisplayName() = %v, want %v", got, tt.want)
+			got := tt.template.GetDisplayName()
+			if got != tt.expected {
+				t.Errorf("GetDisplayName() = %v, expected %v", got, tt.expected)
 			}
 		})
 	}
-
 }
