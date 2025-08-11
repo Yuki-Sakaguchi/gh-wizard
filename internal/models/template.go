@@ -14,6 +14,7 @@ type Template struct {
 	Stars       int       `json:"stars"`
 	Forks       int       `json:"forks"`
 	Language    string    `json:"language"`
+	Topics      []string  `json:"topics"`
 	IsTemplate  bool      `json:"is_template"`
 	Private     bool      `json:"private"`
 	UpdatedAt   time.Time `json:"updated_at"`
