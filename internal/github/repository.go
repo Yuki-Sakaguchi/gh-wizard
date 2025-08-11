@@ -34,14 +34,14 @@ func (c *client) CreateRepositoryWithProgress(ctx context.Context, state *models
 			Status:   models.TaskStatusFailed,
 			Progress: 0.0,
 			Error:    err,
-			Message:  "設定の検証に失敗しました",
+			Message:  fmt.Sprintf("設定の検証に失敗しました: %v", err),
 		}
 		result.Error = err
-		result.Message = "設定の検証に失敗しました"
+		result.Message = fmt.Sprintf("設定の検証に失敗しました: %v", err)
 		return result, err
 	}
 	
-	time.Sleep(1 * time.Second) // 検証処理をシミュレート
+	// time.Sleep(1 * time.Second) // 検証処理をシミュレート（デバッグ用にコメントアウト）
 	progressChan <- models.ExecutionMessage{
 		TaskID:   "validate",
 		Status:   models.TaskStatusCompleted,
@@ -175,12 +175,22 @@ func (c *client) CreateRepositoryWithProgress(ctx context.Context, state *models
 
 // validateConfiguration は設定を検証する
 func (c *client) validateConfiguration(state *models.WizardState) error {
+	// シンプルな検証に変更
+	if state == nil {
+		return fmt.Errorf("ウィザード状態が未設定です")
+	}
+	
 	if state.RepoConfig == nil {
 		return fmt.Errorf("リポジトリ設定が未設定です")
 	}
 	
+	if state.RepoConfig.Name == "" {
+		return fmt.Errorf("リポジトリ名が設定されていません")
+	}
+	
+	// 基本的な検証のみ実行
 	if err := state.RepoConfig.Validate(); err != nil {
-		return err
+		return fmt.Errorf("リポジトリ設定の検証に失敗: %w", err)
 	}
 	
 	return nil
