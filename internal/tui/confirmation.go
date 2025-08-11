@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-runewidth"
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
 )
 
@@ -205,6 +206,10 @@ func (v *ConfirmationView) renderSection(section models.ConfirmationSection) str
 	
 	sectionTitle := titleStyle.Render(section.Icon + " " + section.Title)
 	lines = append(lines, sectionTitle)
+	
+	// タイトルの下に区切り線を追加
+	separator := strings.Repeat("─", runewidth.StringWidth(section.Title)+3)
+	lines = append(lines, v.styles.Debug.Render(separator))
 
 	// セクション内の項目
 	for _, item := range section.Items {
@@ -228,6 +233,15 @@ func (v *ConfirmationView) renderSection(section models.ConfirmationSection) str
 	return sectionStyle.Render(content)
 }
 
+// padString は指定幅まで文字列をパディングする（runewidth使用）
+func padString(s string, width int) string {
+	currentWidth := runewidth.StringWidth(s)
+	if currentWidth >= width {
+		return s
+	}
+	return s + strings.Repeat(" ", width-currentWidth)
+}
+
 func (v *ConfirmationView) renderItem(item models.ConfirmationItem) string {
 	// 値部分のスタイル
 	valueStyle := v.styles.Text.Copy()
@@ -240,10 +254,12 @@ func (v *ConfirmationView) renderItem(item models.ConfirmationItem) string {
 	
 	value := valueStyle.Render(item.Value)
 
-	// ラベル幅を調整してアライメント
-	labelWidth := 16
-	if len(item.Label) > labelWidth {
-		labelWidth = len(item.Label) + 2
+	// ラベル幅を調整してアライメント（runewidth使用）
+	labelWidth := 20 // 表示幅を少し広げる
+	labelText := item.Label + ":"
+	currentWidth := runewidth.StringWidth(labelText)
+	if currentWidth > labelWidth {
+		labelWidth = currentWidth + 2
 	}
 	
 	// ラベル部分のスタイル
@@ -252,15 +268,18 @@ func (v *ConfirmationView) renderItem(item models.ConfirmationItem) string {
 		labelStyle = labelStyle.Bold(true)
 	}
 	
-	alignedLabel := fmt.Sprintf("%-*s", labelWidth, item.Label+":")
-	styledLabel := labelStyle.Render(alignedLabel)
+	// 日本語対応のパディング
+	paddedLabel := padString(labelText, labelWidth)
+	styledLabel := labelStyle.Render(paddedLabel)
 	
 	line := styledLabel + " " + value
 
 	// 説明がある場合は追加
 	if item.Description != "" {
 		descStyle := v.styles.Debug.Copy().Italic(true)
-		descLine := descStyle.Render(fmt.Sprintf("%*s%s", labelWidth+1, "", item.Description))
+		// 説明のインデントも日本語に対応
+		indent := strings.Repeat(" ", labelWidth+1)
+		descLine := descStyle.Render(indent + item.Description)
 		line += "\n" + descLine
 	}
 
@@ -322,12 +341,13 @@ func (v *ConfirmationView) renderActions() string {
 		if i == v.selectedAction {
 			// 選択中のボタン
 			buttonStyle = v.styles.Selected.Copy().
-				Padding(0, 2).
-				Margin(0, 1)
+				Padding(0, 3).
+				Margin(0, 1).
+				Bold(true)
 		} else {
 			// 非選択のボタン
 			buttonStyle = v.styles.Unselected.Copy().
-				Padding(0, 2).
+				Padding(0, 3).
 				Margin(0, 1).
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(lipgloss.Color(v.styles.Colors.Debug))
@@ -336,9 +356,19 @@ func (v *ConfirmationView) renderActions() string {
 		actionButtons = append(actionButtons, buttonStyle.Render(buttonText))
 	}
 
-	buttonsLine := lipgloss.JoinHorizontal(lipgloss.Left, actionButtons...)
+	// アクションボタンを中央揃えで配置
+	buttonsLine := lipgloss.JoinHorizontal(lipgloss.Center, actionButtons...)
+	centeredButtons := lipgloss.NewStyle().
+		Width(v.maxSectionWidth).
+		Align(lipgloss.Center).
+		Render(buttonsLine)
 	
-	return v.styles.Text.Render("実行するアクションを選択してください:") + "\n" + buttonsLine
+	instructionText := v.styles.Text.Copy().
+		Align(lipgloss.Center).
+		Width(v.maxSectionWidth).
+		Render("実行するアクションを選択してください:")
+	
+	return instructionText + "\n\n" + centeredButtons
 }
 
 func (v *ConfirmationView) renderHelp() string {
