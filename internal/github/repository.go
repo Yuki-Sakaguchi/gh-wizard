@@ -3,6 +3,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"time"
@@ -193,6 +194,14 @@ func (c *client) validateConfiguration(state *models.WizardState) error {
 		return fmt.Errorf("リポジトリ設定の検証に失敗: %w", err)
 	}
 	
+	// 実際のGitHub操作時のみ認証をチェック
+	isSimulation := os.Getenv("GH_WIZARD_SIMULATION") != "false"
+	if !isSimulation {
+		if err := c.IsAuthenticated(); err != nil {
+			return fmt.Errorf("GitHub CLI の認証が必要です: %w", err)
+		}
+	}
+	
 	return nil
 }
 
@@ -201,21 +210,41 @@ func (c *client) createRepository(ctx context.Context, state *models.WizardState
 	// gh コマンドを構築
 	args := state.RepoConfig.GetGHCommand(state.SelectedTemplate)
 	
-	// gh コマンドを実行
-	cmd := exec.CommandContext(ctx, "gh", args...)
-	output, err := cmd.CombinedOutput()
+	// 環境変数でシミュレーションモードを制御
+	isSimulation := os.Getenv("GH_WIZARD_SIMULATION") != "false"
 	
-	if err != nil {
-		return "", fmt.Errorf("リポジトリ作成に失敗しました: %w\n出力: %s", err, string(output))
+	if isSimulation {
+		// シミュレーションモード
+		time.Sleep(3 * time.Second) // リポジトリ作成処理をシミュレート
+		
+		// シミュレーション用のURL
+		user, err := c.GetCurrentUser()
+		var username string
+		if err != nil {
+			username = "your-username" // フォールバック
+		} else {
+			username = user.Login
+		}
+		
+		repoURL := fmt.Sprintf("https://github.com/%s/%s", username, state.RepoConfig.Name)
+		return repoURL, nil
+	} else {
+		// 実際のコマンド実行
+		cmd := exec.CommandContext(ctx, "gh", args...)
+		output, err := cmd.CombinedOutput()
+		
+		if err != nil {
+			return "", fmt.Errorf("リポジトリ作成に失敗しました: %w\n出力: %s", err, string(output))
+		}
+		
+		// 成功時の出力からリポジトリURLを抽出
+		repoURL, err := c.extractRepositoryURL(string(output), state.RepoConfig.Name)
+		if err != nil {
+			return "", fmt.Errorf("リポジトリURL の抽出に失敗しました: %w", err)
+		}
+		
+		return repoURL, nil
 	}
-	
-	// 成功時の出力からリポジトリURLを抽出
-	repoURL, err := c.extractRepositoryURL(string(output), state.RepoConfig.Name)
-	if err != nil {
-		return "", fmt.Errorf("リポジトリURL の抽出に失敗しました: %w", err)
-	}
-	
-	return repoURL, nil
 }
 
 // extractRepositoryURL はgh コマンドの出力からリポジトリURLを抽出する
@@ -269,16 +298,23 @@ func (c *client) createReadme(ctx context.Context, state *models.WizardState) er
 
 // cloneRepository はリポジトリをクローンする
 func (c *client) cloneRepository(ctx context.Context, state *models.WizardState, repoURL string) error {
-	// クローン先はリポジトリ名と同じディレクトリ
-	targetDir := state.RepoConfig.Name
+	// 環境変数でシミュレーションモードを制御
+	isSimulation := os.Getenv("GH_WIZARD_SIMULATION") != "false"
 	
-	// git clone コマンドを実行
-	cmd := exec.CommandContext(ctx, "git", "clone", repoURL, targetDir)
-	output, err := cmd.CombinedOutput()
-	
-	if err != nil {
-		return fmt.Errorf("リポジトリクローンに失敗しました: %w\n出力: %s", err, string(output))
+	if isSimulation {
+		// シミュレーションモード
+		time.Sleep(3 * time.Second) // クローン処理をシミュレート
+		return nil
+	} else {
+		// 実際のクローン実行
+		targetDir := state.RepoConfig.Name
+		cmd := exec.CommandContext(ctx, "git", "clone", repoURL, targetDir)
+		output, err := cmd.CombinedOutput()
+		
+		if err != nil {
+			return fmt.Errorf("リポジトリクローンに失敗しました: %w\n出力: %s", err, string(output))
+		}
+		
+		return nil
 	}
-	
-	return nil
 }
