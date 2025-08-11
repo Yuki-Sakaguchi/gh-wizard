@@ -3,15 +3,22 @@ package github
 import (
 	"context"
 	"fmt"
+	"os/exec"
+	"regexp"
 	"time"
 
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
 )
 
 // CreateRepositoryWithProgress はプログレス付きでリポジトリを作成する
-func (c *client) CreateRepositoryWithProgress(ctx context.Context, state *models.WizardState, progressChan chan<- models.ExecutionMessage) error {
+func (c *client) CreateRepositoryWithProgress(ctx context.Context, state *models.WizardState, progressChan chan<- models.ExecutionMessage) (*models.RepositoryCreationResult, error) {
 	plan := models.NewExecutionPlan(state)
 	plan.StartTime = time.Now()
+	
+	result := &models.RepositoryCreationResult{
+		Success: false,
+		Message: "処理開始",
+	}
 	
 	// 設定の検証
 	progressChan <- models.ExecutionMessage{
@@ -29,7 +36,9 @@ func (c *client) CreateRepositoryWithProgress(ctx context.Context, state *models
 			Error:    err,
 			Message:  "設定の検証に失敗しました",
 		}
-		return err
+		result.Error = err
+		result.Message = "設定の検証に失敗しました"
+		return result, err
 	}
 	
 	time.Sleep(1 * time.Second) // 検証処理をシミュレート
@@ -57,9 +66,12 @@ func (c *client) CreateRepositoryWithProgress(ctx context.Context, state *models
 			Error:    err,
 			Message:  "リポジトリ作成に失敗しました",
 		}
-		return err
+		result.Error = err
+		result.Message = "リポジトリ作成に失敗しました"
+		return result, err
 	}
-
+	
+	result.RepositoryURL = repoURL
 	progressChan <- models.ExecutionMessage{
 		TaskID:   "create_repo",
 		Status:   models.TaskStatusCompleted,
@@ -148,8 +160,17 @@ func (c *client) CreateRepositoryWithProgress(ctx context.Context, state *models
 			}
 		}
 	}
+	
+	// クローン処理の結果をresultに反映
+	if state.RepoConfig.SholdClone {
+		result.ClonePath = fmt.Sprintf("./%s", state.RepoConfig.Name)
+	}
+	
+	// 成功結果を設定
+	result.Success = true
+	result.Message = "リポジトリの作成が正常に完了しました"
 
-	return nil
+	return result, nil
 }
 
 // validateConfiguration は設定を検証する
@@ -170,46 +191,84 @@ func (c *client) createRepository(ctx context.Context, state *models.WizardState
 	// gh コマンドを構築
 	args := state.RepoConfig.GetGHCommand(state.SelectedTemplate)
 	
-	// 実行時間をシミュレート
-	time.Sleep(3 * time.Second)
+	// gh コマンドを実行
+	cmd := exec.CommandContext(ctx, "gh", args...)
+	output, err := cmd.CombinedOutput()
 	
-	// 実際の実装では以下のようにコマンドを実行
-	// cmd := exec.CommandContext(ctx, "gh", args...)
-	// output, err := cmd.CombinedOutput()
-	// if err != nil {
-	//     return "", fmt.Errorf("リポジトリ作成に失敗しました: %v, output: %s", err, string(output))
-	// }
+	if err != nil {
+		return "", fmt.Errorf("リポジトリ作成に失敗しました: %w\n出力: %s", err, string(output))
+	}
 	
-	// 現在はシミュレーション用のargs参照のみ（実際の実装では削除）
-	_ = args
+	// 成功時の出力からリポジトリURLを抽出
+	repoURL, err := c.extractRepositoryURL(string(output), state.RepoConfig.Name)
+	if err != nil {
+		return "", fmt.Errorf("リポジトリURL の抽出に失敗しました: %w", err)
+	}
 	
-	// 成功をシミュレート
-	repoURL := fmt.Sprintf("https://github.com/%s/%s", "your-username", state.RepoConfig.Name)
 	return repoURL, nil
+}
+
+// extractRepositoryURL はgh コマンドの出力からリポジトリURLを抽出する
+func (c *client) extractRepositoryURL(output, repoName string) (string, error) {
+	// gh repo create の出力パターンをチェック
+	// 例: "✓ Created repository username/repo-name on GitHub"
+	// 例: "https://github.com/username/repo-name"
+	
+	// HTTPSのURLパターンを探す
+	httpsPattern := regexp.MustCompile(`https://github\.com/[^/\s]+/[^/\s]+`)
+	if matches := httpsPattern.FindString(output); matches != "" {
+		return matches, nil
+	}
+	
+	// Created repository パターンからURLを構築
+	createdPattern := regexp.MustCompile(`✓\s+Created repository\s+([^/\s]+/[^/\s]+)`)
+	if matches := createdPattern.FindStringSubmatch(output); len(matches) > 1 {
+		return fmt.Sprintf("https://github.com/%s", matches[1]), nil
+	}
+	
+	// フォールバック: ユーザー名を取得してURL構築
+	user, err := c.GetCurrentUser()
+	if err != nil {
+		return "", fmt.Errorf("ユーザー情報の取得に失敗: %w", err)
+	}
+	
+	return fmt.Sprintf("https://github.com/%s/%s", user.Login, repoName), nil
 }
 
 // setupTemplate はテンプレートを設定する
 func (c *client) setupTemplate(ctx context.Context, state *models.WizardState) error {
-	// テンプレート設定処理をシミュレート
-	time.Sleep(2 * time.Second)
+	// テンプレートは `gh repo create` コマンドで自動的に適用されるため
+	// ここでは特別な処理は不要
+	// 将来的にはテンプレート適用後の追加設定などを実装可能
+	
 	return nil
 }
 
 // createReadme はREADME.mdを作成する
 func (c *client) createReadme(ctx context.Context, state *models.WizardState) error {
-	// README作成処理をシミュレート
-	time.Sleep(1 * time.Second)
+	// README.md は `gh repo create --add-readme` で自動作成されるため
+	// ここでは特別な処理は不要
+	// 
+	// 将来的には以下のような機能を実装可能:
+	// - カスタマイズされたREADME テンプレートの適用
+	// - プロジェクトタイプに応じた内容の自動生成
+	// - ライセンスやバッジの追加
+	
 	return nil
 }
 
 // cloneRepository はリポジトリをクローンする
 func (c *client) cloneRepository(ctx context.Context, state *models.WizardState, repoURL string) error {
-	// クローン処理をシミュレート
-	time.Sleep(3 * time.Second)
+	// クローン先はリポジトリ名と同じディレクトリ
+	targetDir := state.RepoConfig.Name
 	
-	// 実際の実装では以下のようにクローンを実行
-	// cmd := exec.CommandContext(ctx, "git", "clone", repoURL)
-	// return cmd.Run()
+	// git clone コマンドを実行
+	cmd := exec.CommandContext(ctx, "git", "clone", repoURL, targetDir)
+	output, err := cmd.CombinedOutput()
+	
+	if err != nil {
+		return fmt.Errorf("リポジトリクローンに失敗しました: %w\n出力: %s", err, string(output))
+	}
 	
 	return nil
 }

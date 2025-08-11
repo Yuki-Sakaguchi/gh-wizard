@@ -101,6 +101,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case StepChangeMsg:
 		// ステップ変更メッセージ
 		return a.changeStep(msg.Step)
+		
+	case models.StepChangeWithResultMsg:
+		// 結果付きステップ変更メッセージ
+		return a.changeStepWithResult(msg.Step, msg.Result)
 
 	case ErrorMsg:
 		a.debugMessage = fmt.Sprintf("Error: %v", msg.Error)
@@ -180,6 +184,22 @@ func (a *App) changeStep(step models.Step) (tea.Model, tea.Cmd) {
 
 	a.currentView.SetSize(a.width, a.height)
 
+	return a, a.currentView.Init()
+}
+
+// changeStepWithResult は結果付きでステップを変更し、対応する画面を表示する
+func (a *App) changeStepWithResult(step models.Step, result *models.RepositoryCreationResult) (tea.Model, tea.Cmd) {
+	a.state.CurrentStep = step
+
+	switch step {
+	case models.StepCompleted:
+		a.currentView = NewCompletedView(a.state, a.styles, result)
+	default:
+		// 他のステップは通常のchangeStepで処理
+		return a.changeStep(step)
+	}
+
+	a.currentView.SetSize(a.width, a.height)
 	return a, a.currentView.Init()
 }
 

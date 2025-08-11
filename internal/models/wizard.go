@@ -71,3 +71,9 @@ func (ws *WizardState) CanProceedToNext() bool {
 		return false
 	}
 }
+
+// TUI メッセージ型
+type StepChangeWithResultMsg struct {
+	Step   Step
+	Result *RepositoryCreationResult
+}

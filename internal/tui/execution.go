@@ -31,6 +31,7 @@ type ExecutionView struct {
 	isExecuting   bool
 	isCompleted   bool
 	executionErr  error
+	result        *models.RepositoryCreationResult
 
 	// レイアウト情報
 	width  int
@@ -86,8 +87,8 @@ func (v *ExecutionView) Update(msg tea.Msg) (ViewController, tea.Cmd) {
 		switch msg.String() {
 		case "enter":
 			if v.isCompleted {
-				// 完了画面に進む
-				return v, StepChangeCmd(models.StepCompleted)
+				// 完了画面に進む（結果を含む）
+				return v, StepChangeWithResultCmd(models.StepCompleted, v.result)
 			}
 		}
 
@@ -261,7 +262,10 @@ func (v *ExecutionView) startExecution() tea.Cmd {
 		
 		go func() {
 			ctx := context.Background()
-			err := v.githubClient.CreateRepositoryWithProgress(ctx, v.state, v.progressChan)
+			result, err := v.githubClient.CreateRepositoryWithProgress(ctx, v.state, v.progressChan)
+			
+			// 結果を保存
+			v.result = result
 			
 			if err != nil {
 				v.progressChan <- models.ExecutionMessage{
@@ -356,10 +360,18 @@ type ExecutionProgressMsg struct {
 	Message models.ExecutionMessage
 }
 
+
 // StepChangeCmd はステップ変更コマンドを作成する
 func StepChangeCmd(step models.Step) tea.Cmd {
 	return func() tea.Msg {
 		return StepChangeMsg{Step: step}
+	}
+}
+
+// StepChangeWithResultCmd は結果付きステップ変更コマンドを作成する
+func StepChangeWithResultCmd(step models.Step, result *models.RepositoryCreationResult) tea.Cmd {
+	return func() tea.Msg {
+		return models.StepChangeWithResultMsg{Step: step, Result: result}
 	}
 }
 
