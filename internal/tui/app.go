@@ -158,6 +158,21 @@ func (a *App) changeStep(step models.Step) (tea.Model, tea.Cmd) {
 	case models.StepConfirmation:
 		a.currentView = NewConfirmationView(a.state, a.styles)
 
+	case models.StepExecution:
+		a.currentView = NewExecutionView(a.state, a.styles, a.githubClient)
+
+	case models.StepCompleted:
+		// 完了画面用の結果データを作成
+		result := &models.RepositoryCreationResult{
+			Success:       true,
+			RepositoryURL: fmt.Sprintf("https://github.com/your-username/%s", a.state.RepoConfig.Name),
+			Message:       "リポジトリが正常に作成されました",
+		}
+		if a.state.RepoConfig.SholdClone {
+			result.ClonePath = fmt.Sprintf("./%s", a.state.RepoConfig.Name)
+		}
+		a.currentView = NewCompletedView(a.state, a.styles, result)
+
 	default:
 		a.debugMessage = fmt.Sprintf("Unknown step: %v", step)
 		return a, nil
