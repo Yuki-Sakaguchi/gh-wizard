@@ -160,7 +160,7 @@ func (a *App) changeStep(step models.Step) (tea.Model, tea.Cmd) {
 		a.currentView = NewSettingsView(a.state, a.styles)
 
 	case models.StepConfirmation:
-		a.currentView = NewConfirmationView(a.state, a.styles)
+		a.currentView = NewConfirmationView(a.state, a.styles, a.githubClient)
 
 	case models.StepExecution:
 		a.currentView = NewExecutionView(a.state, a.styles, a.githubClient)

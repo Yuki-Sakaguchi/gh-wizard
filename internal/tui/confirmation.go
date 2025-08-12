@@ -4,18 +4,20 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Yuki-Sakaguchi/gh-wizard/internal/github"
+	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mattn/go-runewidth"
-	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
 )
 
 // ConfirmationView は確認画面
 type ConfirmationView struct {
-	state  *models.WizardState
-	styles *Styles
-	width  int
-	height int
+	state        *models.WizardState
+	styles       *Styles
+	githubClient github.Client
+	width        int
+	height       int
 
 	// 確認画面のデータ
 	confirmationData *models.ConfirmationData
@@ -30,10 +32,11 @@ type ConfirmationView struct {
 	contentPadding   int
 }
 
-func NewConfirmationView(state *models.WizardState, styles *Styles) *ConfirmationView {
+func NewConfirmationView(state *models.WizardState, styles *Styles, githubClient github.Client) *ConfirmationView {
 	return &ConfirmationView{
 		state:           state,
 		styles:          styles,
+		githubClient:    githubClient,
 		selectedAction:  2, // デフォルトは "リポジトリ作成"
 		showWarnings:    false,
 		showCommand:     false,
@@ -42,8 +45,8 @@ func NewConfirmationView(state *models.WizardState, styles *Styles) *Confirmatio
 }
 
 func (v *ConfirmationView) Init() tea.Cmd {
-	// 確認データを構築
-	v.confirmationData = models.BuildConfirmationData(v.state)
+	// 確認データを構築（GitHubクライアント付き）
+	v.confirmationData = models.BuildConfirmationDataWithClient(v.state, v.githubClient)
 	return nil
 }
 

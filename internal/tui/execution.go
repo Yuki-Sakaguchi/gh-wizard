@@ -106,6 +106,11 @@ func (v *ExecutionView) Update(msg tea.Msg) (ViewController, tea.Cmd) {
 	case ExecutionProgressMsg:
 		// プログレス更新
 		v.updateProgress(msg.Message)
+		// 継続的にプログレスをリッスン
+		return v, v.listenForProgress()
+
+	case ExecutionTickMsg:
+		// プログレス継続監視
 		return v, v.listenForProgress()
 
 	case spinner.TickMsg:
@@ -309,9 +314,11 @@ func (v *ExecutionView) listenForProgress() tea.Cmd {
 
 			return ExecutionProgressMsg{Message: msg}
 
-		case <-time.After(100 * time.Millisecond):
-			// タイムアウト（通常の更新サイクル）
-			return nil
+		default:
+			// ノンブロッキングでチェックして、メッセージがなければ継続
+			return tea.Tick(50*time.Millisecond, func(t time.Time) tea.Msg {
+				return ExecutionTickMsg{}
+			})()
 		}
 	}
 }
@@ -359,6 +366,8 @@ type ExecutionErrorMsg struct {
 type ExecutionProgressMsg struct {
 	Message models.ExecutionMessage
 }
+
+type ExecutionTickMsg struct{}
 
 
 // StepChangeCmd はステップ変更コマンドを作成する

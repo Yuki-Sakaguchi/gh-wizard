@@ -29,7 +29,19 @@ func (c *client) CreateRepositoryWithProgress(ctx context.Context, state *models
 		Message:  "設定を検証しています...",
 	}
 	
+	// デバッグ: 簡単なログ出力
+	if debugFile, err := os.Create("/tmp/gh-wizard-debug.log"); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: 検証開始 - RepoName: %s\n", state.RepoConfig.Name)
+	}
+	
 	if err := c.validateConfiguration(state); err != nil {
+		// デバッグ: エラー詳細をログ出力
+		if debugFile, err2 := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_WRONLY, 0644); err2 == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: 検証失敗 - Error: %v\n", err)
+		}
+		
 		progressChan <- models.ExecutionMessage{
 			TaskID:   "validate",
 			Status:   models.TaskStatusFailed,
@@ -58,8 +70,20 @@ func (c *client) CreateRepositoryWithProgress(ctx context.Context, state *models
 		Message:  "リポジトリを作成しています...",
 	}
 
+	// デバッグ: リポジトリ作成開始をログ出力
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: リポジトリ作成開始\n")
+	}
+	
 	repoURL, err := c.createRepository(ctx, state)
 	if err != nil {
+		// デバッグ: エラー詳細をログ出力
+		if debugFile, err2 := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_WRONLY, 0644); err2 == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: リポジトリ作成失敗 - Error: %v\n", err)
+		}
+		
 		progressChan <- models.ExecutionMessage{
 			TaskID:   "create_repo",
 			Status:   models.TaskStatusFailed,
@@ -70,6 +94,12 @@ func (c *client) CreateRepositoryWithProgress(ctx context.Context, state *models
 		result.Error = err
 		result.Message = "リポジトリ作成に失敗しました"
 		return result, err
+	}
+	
+	// デバッグ: リポジトリ作成成功をログ出力
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: リポジトリ作成成功 - URL: %s\n", repoURL)
 	}
 	
 	result.RepositoryURL = repoURL
