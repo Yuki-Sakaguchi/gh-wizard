@@ -101,6 +101,10 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case StepChangeMsg:
 		// ステップ変更メッセージ
 		return a.changeStep(msg.Step)
+		
+	case models.StepChangeWithResultMsg:
+		// 結果付きステップ変更メッセージ
+		return a.changeStepWithResult(msg.Step, msg.Result)
 
 	case ErrorMsg:
 		a.debugMessage = fmt.Sprintf("Error: %v", msg.Error)
@@ -156,7 +160,22 @@ func (a *App) changeStep(step models.Step) (tea.Model, tea.Cmd) {
 		a.currentView = NewSettingsView(a.state, a.styles)
 
 	case models.StepConfirmation:
-		a.currentView = NewConfirmationView(a.state, a.styles)
+		a.currentView = NewConfirmationView(a.state, a.styles, a.githubClient)
+
+	case models.StepExecution:
+		a.currentView = NewExecutionView(a.state, a.styles, a.githubClient)
+
+	case models.StepCompleted:
+		// 完了画面用の結果データを作成
+		result := &models.RepositoryCreationResult{
+			Success:       true,
+			RepositoryURL: fmt.Sprintf("https://github.com/your-username/%s", a.state.RepoConfig.Name),
+			Message:       "リポジトリが正常に作成されました",
+		}
+		if a.state.RepoConfig.SholdClone {
+			result.ClonePath = fmt.Sprintf("./%s", a.state.RepoConfig.Name)
+		}
+		a.currentView = NewCompletedView(a.state, a.styles, result)
 
 	default:
 		a.debugMessage = fmt.Sprintf("Unknown step: %v", step)
@@ -165,6 +184,22 @@ func (a *App) changeStep(step models.Step) (tea.Model, tea.Cmd) {
 
 	a.currentView.SetSize(a.width, a.height)
 
+	return a, a.currentView.Init()
+}
+
+// changeStepWithResult は結果付きでステップを変更し、対応する画面を表示する
+func (a *App) changeStepWithResult(step models.Step, result *models.RepositoryCreationResult) (tea.Model, tea.Cmd) {
+	a.state.CurrentStep = step
+
+	switch step {
+	case models.StepCompleted:
+		a.currentView = NewCompletedView(a.state, a.styles, result)
+	default:
+		// 他のステップは通常のchangeStepで処理
+		return a.changeStep(step)
+	}
+
+	a.currentView.SetSize(a.width, a.height)
 	return a, a.currentView.Init()
 }
 

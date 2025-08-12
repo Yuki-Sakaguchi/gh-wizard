@@ -84,8 +84,13 @@ type ConfirmationData struct {
 	EstimatedTime  string
 }
 
-// BuildConfirmationData はウィザード状態から確認画面データを構築する
+// BuildConfirmationData はウィザード状態から確認画面データを構築する（後方互換用）
 func BuildConfirmationData(state *WizardState) *ConfirmationData {
+	return BuildConfirmationDataWithClient(state, nil)
+}
+
+// BuildConfirmationDataWithClient は確認画面用のデータを構築する（GitHubクライアント付き）
+func BuildConfirmationDataWithClient(state *WizardState, githubClient interface{}) *ConfirmationData {
 	data := &ConfirmationData{
 		Actions: []ConfirmationAction{
 			ActionModifySettings,
@@ -107,7 +112,7 @@ func BuildConfirmationData(state *WizardState) *ConfirmationData {
 	}
 
 	// 作成先情報セクション
-	destinationSection := buildDestinationSection(state)
+	destinationSection := buildDestinationSection(state, githubClient)
 	data.Sections = append(data.Sections, destinationSection)
 
 	// 警告メッセージを生成
@@ -116,7 +121,7 @@ func BuildConfirmationData(state *WizardState) *ConfirmationData {
 	// リポジトリURLとその他の情報
 	if state.RepoConfig != nil {
 		data.RepositoryURL = fmt.Sprintf("https://github.com/%s/%s", 
-			getCurrentUser(), state.RepoConfig.Name)
+			getCurrentUserWithClient(githubClient), state.RepoConfig.Name)
 		data.EstimatedTime = "約30秒"
 	}
 
@@ -233,8 +238,8 @@ func buildRepositorySection(config *RepositoryConfig) ConfirmationSection {
 }
 
 // buildDestinationSection は作成先情報セクションを構築する
-func buildDestinationSection(state *WizardState) ConfirmationSection {
-	user := getCurrentUser()
+func buildDestinationSection(state *WizardState, githubClient interface{}) ConfirmationSection {
+	user := getCurrentUserWithClient(githubClient)
 	url := "（未設定）"
 	
 	if state.RepoConfig != nil && state.RepoConfig.Name != "" {
@@ -286,12 +291,29 @@ func buildWarnings(state *WizardState) []string {
 	return warnings
 }
 
-// getCurrentUser は現在のGitHubユーザー名を取得する（簡易実装）
+// getCurrentUser は現在のGitHubユーザー名を取得する（後方互換用）
 func getCurrentUser() string {
-	// 実際の実装では gh api user を使用してユーザー情報を取得
-	// ここでは簡易的に固定値を返す
+	return getCurrentUserWithClient(nil)
+}
+
+// getCurrentUserWithClient は現在のGitHubユーザー名を取得する
+func getCurrentUserWithClient(githubClient interface{}) string {
+	// GitHubクライアントが提供されている場合は実際のユーザー名を取得
+	if client, ok := githubClient.(interface {
+		GetCurrentUser() (interface{}, error)
+	}); ok && client != nil {
+		if user, err := client.GetCurrentUser(); err == nil && user != nil {
+			// github.User 型を期待
+			if githubUser, ok := user.(struct{ Login string }); ok {
+				return githubUser.Login
+			}
+		}
+	}
+	
+	// フォールバック: 簡易実装
 	return "your-username"
 }
+
 
 // GetActionByKey はキー入力からアクションを取得する
 func GetActionByKey(key string) (ConfirmationAction, bool) {

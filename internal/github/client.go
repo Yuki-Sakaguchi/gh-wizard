@@ -25,6 +25,9 @@ type Client interface {
 
 	// CreateRepository はリポジトリを作成する（gh コマンド経由）
 	CreateRepository(ctx context.Context, config models.RepositoryConfig, template *models.Template) error
+
+	// CreateRepositoryWithProgress はプログレス付きでリポジトリを作成する
+	CreateRepositoryWithProgress(ctx context.Context, state *models.WizardState, progressChan chan<- models.ExecutionMessage) (*models.RepositoryCreationResult, error)
 }
 
 // User は GitHub ユーザーの情報を表す
