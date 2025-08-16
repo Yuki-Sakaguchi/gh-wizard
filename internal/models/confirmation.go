@@ -1,8 +1,10 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -309,9 +311,9 @@ func getCurrentUserWithClient(githubClient interface{}) string {
 	if githubClient == nil {
 		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
 			defer debugFile.Close()
-			fmt.Fprintf(debugFile, "DEBUG: Client is nil, trying direct approach\n")
+			fmt.Fprintf(debugFile, "DEBUG: Client is nil, trying direct CLI approach\n")
 		}
-		return "your-username"
+		return getCurrentUserFromCLI()
 	}
 	
 	// より汎用的な型アサーション - どんな構造体でも試行
@@ -325,11 +327,17 @@ func getCurrentUserWithClient(githubClient interface{}) string {
 		}
 	}
 
-	// フォールバック: 簡易実装
+	// フォールバック: 直接GitHub CLIから取得
 	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
 		defer debugFile.Close()
-		fmt.Fprintf(debugFile, "DEBUG: Fallback to your-username\n")
+		fmt.Fprintf(debugFile, "DEBUG: Type assertions failed, falling back to CLI\n")
 	}
+	
+	cliUsername := getCurrentUserFromCLI()
+	if cliUsername != "your-username" {
+		return cliUsername
+	}
+	
 	return "your-username"
 }
 
@@ -505,6 +513,46 @@ func extractLoginFromUser(user interface{}) string {
 		fmt.Fprintf(debugFile, "DEBUG: No matching type found for extracting Login\n")
 	}
 	return ""
+}
+
+// getCurrentUserFromCLI は直接GitHub CLIからユーザー名を取得する
+func getCurrentUserFromCLI() string {
+	// デバッグ出力
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: getCurrentUserFromCLI called\n")
+	}
+	
+	// GitHub CLIでユーザー情報を取得
+	cmd := exec.Command("gh", "api", "user")
+	output, err := cmd.Output()
+	if err != nil {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: gh api user failed: %v\n", err)
+		}
+		return "your-username"
+	}
+	
+	// JSONを解析
+	var user struct {
+		Login string `json:"login"`
+	}
+	
+	if err := json.Unmarshal(output, &user); err != nil {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: JSON unmarshal failed: %v\n", err)
+		}
+		return "your-username"
+	}
+	
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: CLI returned user: %s\n", user.Login)
+	}
+	
+	return user.Login
 }
 
 // GetActionByKey はキー入力からアクションを取得する

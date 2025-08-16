@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
@@ -281,6 +282,10 @@ func (c *client) createRepository(ctx context.Context, state *models.WizardState
 		}
 
 		if err != nil {
+			// リポジトリ名の重複エラーの場合は、より詳細なエラーメッセージを提供
+			if strings.Contains(string(output), "name already exists") {
+				return "", fmt.Errorf("リポジトリ名 '%s' は既に存在します。別の名前を使用してください。\n出力: %s", state.RepoConfig.Name, string(output))
+			}
 			return "", fmt.Errorf("リポジトリ作成に失敗しました: %w\n出力: %s", err, string(output))
 		}
 
