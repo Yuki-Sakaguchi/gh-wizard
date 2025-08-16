@@ -4,27 +4,27 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
 )
 
 // SettingsView はリポジトリ設定画面（連続入力形式）
 type SettingsView struct {
-	state        *models.WizardState
-	styles       *Styles
-	width        int
-	height       int
+	state  *models.WizardState
+	styles *Styles
+	width  int
+	height int
 
 	// 質問フロー管理
 	questionFlow *models.QuestionFlow
-	
+
 	// UI コンポーネント
-	textInput    textinput.Model
-	progress     progress.Model
-	selectIndex  int // Select型質問用のインデックス
+	textInput   textinput.Model
+	progress    progress.Model
+	selectIndex int // Select型質問用のインデックス
 
 	// 状態管理
 	inputValue   string
@@ -105,7 +105,7 @@ func (v *SettingsView) handleKeyPress(msg tea.KeyMsg) (ViewController, tea.Cmd) 
 	case "enter":
 		// 回答を設定
 		var answer string
-		
+
 		switch currentQuestion.Type {
 		case models.QuestionTypeText, models.QuestionTypeBool:
 			answer = v.textInput.Value()
@@ -335,20 +335,20 @@ func (v *SettingsView) renderKeybindHelp(question *models.Question) string {
 	}
 
 	keys = append(keys, "Enter: 決定", "Esc: 戻る", "F1: ヘルプ")
-	
+
 	return v.styles.Debug.Render("⌨️  " + strings.Join(keys, "  "))
 }
 
 func (v *SettingsView) SetSize(width, height int) {
 	v.width = width
 	v.height = height
-	
+
 	// TextInputの幅を調整
 	v.textInput.Width = width - 10
 	if v.textInput.Width < 20 {
 		v.textInput.Width = 20
 	}
-	
+
 	// Progressバーの幅を調整
 	v.progress.Width = width - 4
 }

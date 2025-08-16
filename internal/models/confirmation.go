@@ -1,7 +1,10 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -68,20 +71,20 @@ type ConfirmationItem struct {
 
 // ConfirmationSection は確認画面のセクションを表す
 type ConfirmationSection struct {
-	Title       string
-	Icon        string
-	Items       []ConfirmationItem
-	Warning     string
-	HasWarning  bool
+	Title      string
+	Icon       string
+	Items      []ConfirmationItem
+	Warning    string
+	HasWarning bool
 }
 
 // ConfirmationData は確認画面全体のデータを表す
 type ConfirmationData struct {
-	Sections       []ConfirmationSection
-	Actions        []ConfirmationAction
-	Warnings       []string
-	RepositoryURL  string
-	EstimatedTime  string
+	Sections      []ConfirmationSection
+	Actions       []ConfirmationAction
+	Warnings      []string
+	RepositoryURL string
+	EstimatedTime string
 }
 
 // BuildConfirmationData はウィザード状態から確認画面データを構築する（後方互換用）
@@ -120,7 +123,7 @@ func BuildConfirmationDataWithClient(state *WizardState, githubClient interface{
 
 	// リポジトリURLとその他の情報
 	if state.RepoConfig != nil {
-		data.RepositoryURL = fmt.Sprintf("https://github.com/%s/%s", 
+		data.RepositoryURL = fmt.Sprintf("https://github.com/%s/%s",
 			getCurrentUserWithClient(githubClient), state.RepoConfig.Name)
 		data.EstimatedTime = "約30秒"
 	}
@@ -241,7 +244,7 @@ func buildRepositorySection(config *RepositoryConfig) ConfirmationSection {
 func buildDestinationSection(state *WizardState, githubClient interface{}) ConfirmationSection {
 	user := getCurrentUserWithClient(githubClient)
 	url := "（未設定）"
-	
+
 	if state.RepoConfig != nil && state.RepoConfig.Name != "" {
 		url = fmt.Sprintf("https://github.com/%s/%s", user, state.RepoConfig.Name)
 	}
@@ -298,22 +301,259 @@ func getCurrentUser() string {
 
 // getCurrentUserWithClient は現在のGitHubユーザー名を取得する
 func getCurrentUserWithClient(githubClient interface{}) string {
-	// GitHubクライアントが提供されている場合は実際のユーザー名を取得
-	if client, ok := githubClient.(interface {
-		GetCurrentUser() (interface{}, error)
-	}); ok && client != nil {
-		if user, err := client.GetCurrentUser(); err == nil && user != nil {
-			// github.User 型を期待
-			if githubUser, ok := user.(struct{ Login string }); ok {
-				return githubUser.Login
-			}
-		}
+	// デバッグ出力を追加
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: getCurrentUserWithClient called, client type: %T\n", githubClient)
 	}
 	
-	// フォールバック: 簡易実装
+	// もしクライアントがnilの場合は、直接GitHubCLIから取得を試行
+	if githubClient == nil {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Client is nil, trying direct CLI approach\n")
+		}
+		return getCurrentUserFromCLI()
+	}
+	
+	// より汎用的な型アサーション - どんな構造体でも試行
+	if userInterface := tryGetCurrentUserInterface(githubClient); userInterface != nil {
+		if login := extractLoginFromUser(userInterface); login != "" {
+			if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+				defer debugFile.Close()
+				fmt.Fprintf(debugFile, "DEBUG: Extracted login: %s\n", login)
+			}
+			return login
+		}
+	}
+
+	// フォールバック: 直接GitHub CLIから取得
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: Type assertions failed, falling back to CLI\n")
+	}
+	
+	cliUsername := getCurrentUserFromCLI()
+	if cliUsername != "your-username" {
+		return cliUsername
+	}
+	
 	return "your-username"
 }
 
+// githubUser はGitHubユーザーを表すローカル型
+type githubUser struct {
+	Login     string `json:"login"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	AvatarURL string `json:"avatar_url"`
+}
+
+// tryGetCurrentUserInterface は任意の型のGetCurrentUserメソッドを呼び出す  
+func tryGetCurrentUserInterface(client interface{}) interface{} {
+	// デバッグ出力
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: tryGetCurrentUserInterface called\n")
+	}
+	
+	// github.User型に対応した型アサーション
+	type UserWithLogin struct {
+		Login     string `json:"login"`
+		Name      string `json:"name"`
+		Email     string `json:"email"`
+		AvatarURL string `json:"avatar_url"`
+	}
+	
+	type getCurrentUserMethod interface {
+		GetCurrentUser() (*UserWithLogin, error)
+	}
+
+	if c, ok := client.(getCurrentUserMethod); ok {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Type assertion for GetCurrentUser with UserWithLogin succeeded\n")
+		}
+		if user, err := c.GetCurrentUser(); err == nil {
+			if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+				defer debugFile.Close()
+				fmt.Fprintf(debugFile, "DEBUG: GetCurrentUser() returned: %T = %+v\n", user, user)
+			}
+			return user
+		} else {
+			if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+				defer debugFile.Close()
+				fmt.Fprintf(debugFile, "DEBUG: GetCurrentUser() error: %v\n", err)
+			}
+		}
+	} else {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Type assertion for GetCurrentUser with UserWithLogin failed\n")
+		}
+	}
+	
+	// フォールバック：より汎用的な型
+	type genericGetCurrentUserMethod interface {
+		GetCurrentUser() (interface{}, error)
+	}
+
+	if c, ok := client.(genericGetCurrentUserMethod); ok {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Type assertion for generic GetCurrentUser succeeded\n")
+		}
+		if user, err := c.GetCurrentUser(); err == nil {
+			if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+				defer debugFile.Close()
+				fmt.Fprintf(debugFile, "DEBUG: Generic GetCurrentUser() returned: %T = %+v\n", user, user)
+			}
+			return user
+		} else {
+			if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+				defer debugFile.Close()
+				fmt.Fprintf(debugFile, "DEBUG: Generic GetCurrentUser() error: %v\n", err)
+			}
+		}
+	} else {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Type assertion for generic GetCurrentUser failed\n")
+		}
+	}
+
+	return nil
+}
+
+// extractLoginFromUser はユーザーオブジェクトからログイン名を抽出
+func extractLoginFromUser(user interface{}) string {
+	// デバッグ出力
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: extractLoginFromUser called, user type: %T, value: %+v\n", user, user)
+	}
+	
+	// Loginフィールドを持つ任意の型に対応（リフレクション代わり）
+	type LoginProvider interface {
+		GetLogin() string
+	}
+	
+	if loginProvider, ok := user.(LoginProvider); ok {
+		login := loginProvider.GetLogin()
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Found LoginProvider with Login: %s\n", login)
+		}
+		return login
+	}
+	
+	// 実際のgithub.User型のパターン（ポインタ型） - より多くのバリエーションを試行
+	type UserType1 struct {
+		Login     string `json:"login"`
+		Name      string `json:"name"`
+		Email     string `json:"email"`
+		AvatarURL string `json:"avatar_url"`
+	}
+	
+	if u, ok := user.(*UserType1); ok && u != nil {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Found UserType1 pointer with Login: %s\n", u.Login)
+		}
+		return u.Login
+	}
+	
+	// 直接的な型アサーション - runtime type information の確認
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: Trying to match actual runtime type: %T\n", user)
+	}
+	
+	// github.User構造体のパターン（値型）
+	if u, ok := user.(struct {
+		Login     string `json:"login"`
+		Name      string `json:"name"`
+		Email     string `json:"email"`
+		AvatarURL string `json:"avatar_url"`
+	}); ok {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Found value struct with Login: %s\n", u.Login)
+		}
+		return u.Login
+	}
+
+	// 一般的な構造体パターンを試行
+	if u, ok := user.(struct {
+		Login     string
+		Name      string
+		Email     string
+		AvatarURL string
+	}); ok {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Found general struct with Login: %s\n", u.Login)
+		}
+		return u.Login
+	}
+
+	// シンプルなLoginフィールドのみ
+	if u, ok := user.(struct {
+		Login string
+	}); ok {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Found simple Login struct: %s\n", u.Login)
+		}
+		return u.Login
+	}
+
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: No matching type found for extracting Login\n")
+	}
+	return ""
+}
+
+// getCurrentUserFromCLI は直接GitHub CLIからユーザー名を取得する
+func getCurrentUserFromCLI() string {
+	// デバッグ出力
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: getCurrentUserFromCLI called\n")
+	}
+	
+	// GitHub CLIでユーザー情報を取得
+	cmd := exec.Command("gh", "api", "user")
+	output, err := cmd.Output()
+	if err != nil {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: gh api user failed: %v\n", err)
+		}
+		return "your-username"
+	}
+	
+	// JSONを解析
+	var user struct {
+		Login string `json:"login"`
+	}
+	
+	if err := json.Unmarshal(output, &user); err != nil {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: JSON unmarshal failed: %v\n", err)
+		}
+		return "your-username"
+	}
+	
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: CLI returned user: %s\n", user.Login)
+	}
+	
+	return user.Login
+}
 
 // GetActionByKey はキー入力からアクションを取得する
 func GetActionByKey(key string) (ConfirmationAction, bool) {
@@ -322,13 +562,13 @@ func GetActionByKey(key string) (ConfirmationAction, bool) {
 		ActionCancel,
 		ActionCreateRepository,
 	}
-	
+
 	for _, action := range actions {
 		if action.GetKey() == key {
 			return action, true
 		}
 	}
-	
+
 	return ActionModifySettings, false
 }
 
@@ -337,6 +577,6 @@ func (cd *ConfirmationData) FormatRepositoryCommand(state *WizardState) []string
 	if state.RepoConfig == nil {
 		return []string{}
 	}
-	
+
 	return state.RepoConfig.GetGHCommand(state.SelectedTemplate)
 }

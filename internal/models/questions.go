@@ -70,34 +70,34 @@ func NewQuestionFlow() *QuestionFlow {
 			Validation:  ValidateDescription,
 		},
 		{
-			ID:          "visibility",
-			Type:        QuestionTypeSelect,
-			Title:       "リポジトリの公開設定を選択してください",
-			Description: "パブリック（公開）かプライベート（非公開）を選択します",
-			HelpText:    "↑↓キーで選択、Enterで決定",
-			Required:    true,
-			Options:     []string{"private（非公開）", "public（公開）"},
+			ID:           "visibility",
+			Type:         QuestionTypeSelect,
+			Title:        "リポジトリの公開設定を選択してください",
+			Description:  "パブリック（公開）かプライベート（非公開）を選択します",
+			HelpText:     "↑↓キーで選択、Enterで決定",
+			Required:     true,
+			Options:      []string{"private（非公開）", "public（公開）"},
 			DefaultValue: "private（非公開）",
 		},
 		{
-			ID:          "clone_after_create",
-			Type:        QuestionTypeBool,
-			Title:       "作成後にローカルにクローンしますか？",
-			Description: "リポジトリ作成後、自動的にローカル環境にクローンします",
-			HelpText:    "y/n または Yes/No で回答してください",
-			Required:    true,
+			ID:           "clone_after_create",
+			Type:         QuestionTypeBool,
+			Title:        "作成後にローカルにクローンしますか？",
+			Description:  "リポジトリ作成後、自動的にローカル環境にクローンします",
+			HelpText:     "y/n または Yes/No で回答してください",
+			Required:     true,
 			DefaultValue: "yes",
-			Validation:  ValidateBooleanInput,
+			Validation:   ValidateBooleanInput,
 		},
 		{
-			ID:          "add_readme",
-			Type:        QuestionTypeBool,
-			Title:       "READMEファイルを追加しますか？",
-			Description: "初期のREADME.mdファイルを作成します（テンプレート使用時は無視されます）",
-			HelpText:    "y/n または Yes/No で回答してください",
-			Required:    true,
+			ID:           "add_readme",
+			Type:         QuestionTypeBool,
+			Title:        "READMEファイルを追加しますか？",
+			Description:  "初期のREADME.mdファイルを作成します（テンプレート使用時は無視されます）",
+			HelpText:     "y/n または Yes/No で回答してください",
+			Required:     true,
 			DefaultValue: "yes",
-			Validation:  ValidateBooleanInput,
+			Validation:   ValidateBooleanInput,
 		},
 	}
 
@@ -158,7 +158,7 @@ func (qf *QuestionFlow) SetAnswer(value string) error {
 		Value:      value,
 		IsValid:    validationError == nil,
 	}
-	
+
 	if validationError != nil {
 		answer.ErrorMsg = validationError.Error()
 	}
@@ -174,7 +174,7 @@ func (qf *QuestionFlow) GoToNext() bool {
 		qf.CurrentIndex++
 		return true
 	}
-	
+
 	// 全ての質問が完了
 	qf.IsCompleted = true
 	return false
@@ -228,7 +228,7 @@ func ValidateRepositoryName(name string) error {
 	if name == "" {
 		return errors.New("リポジトリ名は必須です")
 	}
-	
+
 	if len(name) > 100 {
 		return errors.New("リポジトリ名は100文字以内で入力してください")
 	}
@@ -260,13 +260,13 @@ func ValidateDescription(desc string) error {
 func ValidateBooleanInput(value string) error {
 	lower := strings.ToLower(strings.TrimSpace(value))
 	validValues := []string{"y", "n", "yes", "no", "true", "false", "1", "0"}
-	
+
 	for _, valid := range validValues {
 		if lower == valid {
 			return nil
 		}
 	}
-	
+
 	return errors.New("y/n、yes/no、true/false、または1/0で入力してください")
 }
 

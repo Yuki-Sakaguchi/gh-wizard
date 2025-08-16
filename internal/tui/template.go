@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Yuki-Sakaguchi/gh-wizard/internal/github"
+	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/Yuki-Sakaguchi/gh-wizard/internal/github"
-	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
 )
 
 // templateItem はリストアイテムのインターフェースを実装
@@ -35,7 +35,7 @@ func (t templateItem) Description() string {
 }
 
 // templateDelegate はリストアイテムの描画をカスタマイズ
-type templateDelegate struct{
+type templateDelegate struct {
 	styles *Styles
 }
 
@@ -92,15 +92,15 @@ type TemplateView struct {
 	height       int
 
 	// List Model
-	list         list.Model
-	loading      bool
-	error        error
+	list    list.Model
+	loading bool
+	error   error
 
 	// 詳細パネル
 	detailsCache map[string]*TemplateDetails
 
 	// レイアウト
-	splitRatio   float64 // 左右の分割比率（デフォルト: 0.4）
+	splitRatio float64 // 左右の分割比率（デフォルト: 0.4）
 }
 
 func NewTemplateView(state *models.WizardState, styles *Styles, githubClient github.Client) *TemplateView {
@@ -138,7 +138,7 @@ func (v *TemplateView) Update(msg tea.Msg) (ViewController, tea.Cmd) {
 	case TemplatesLoadedMsg:
 		v.loading = false
 		v.list.StopSpinner()
-		
+
 		if msg.Error != nil {
 			v.error = msg.Error
 			return v, nil
@@ -270,8 +270,8 @@ func (v *TemplateView) CanGoNext() bool {
 // レイアウト計算
 func (v *TemplateView) calculateLayout() (leftWidth, rightWidth, contentHeight int) {
 	// ボーダーとパディングを考慮
-	availableWidth := v.width - 4  // 左右のボーダー
-	contentHeight = v.height - 4   // 上下のボーダー + ヘルプテキスト
+	availableWidth := v.width - 4 // 左右のボーダー
+	contentHeight = v.height - 4  // 上下のボーダー + ヘルプテキスト
 
 	leftWidth = int(float64(availableWidth) * v.splitRatio)
 	rightWidth = availableWidth - leftWidth - 1 // 分割線のスペース

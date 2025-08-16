@@ -21,17 +21,17 @@ type ExecutionView struct {
 	githubClient github.Client
 
 	// UI コンポーネント
-	spinner     spinner.Model
-	progress    progress.Model
+	spinner      spinner.Model
+	progress     progress.Model
 	taskProgress map[string]progress.Model
 
 	// 実行状態
-	plan          *models.ExecutionPlan
-	progressChan  chan models.ExecutionMessage
-	isExecuting   bool
-	isCompleted   bool
-	executionErr  error
-	result        *models.RepositoryCreationResult
+	plan         *models.ExecutionPlan
+	progressChan chan models.ExecutionMessage
+	isExecuting  bool
+	isCompleted  bool
+	executionErr error
+	result       *models.RepositoryCreationResult
 
 	// レイアウト情報
 	width  int
@@ -63,7 +63,7 @@ func NewExecutionView(state *models.WizardState, styles *Styles, githubClient gi
 // Init は初期化コマンドを返す
 func (v *ExecutionView) Init() tea.Cmd {
 	v.plan = models.NewExecutionPlan(v.state)
-	
+
 	// 各タスク用のプログレスバーを作成
 	for _, task := range v.plan.Tasks {
 		taskProgress := progress.New(progress.WithDefaultGradient())
@@ -152,7 +152,7 @@ func (v *ExecutionView) View() string {
 		percentage := int(v.plan.OverallProgress * 100)
 		progressBar := v.progress.ViewAs(v.plan.OverallProgress)
 		overallProgress += fmt.Sprintf("%s %d%%", progressBar, percentage)
-		
+
 		// 推定残り時間
 		if v.isExecuting {
 			remaining := v.plan.GetEstimatedRemainingTime()
@@ -200,17 +200,17 @@ func (v *ExecutionView) renderTaskList() string {
 	for _, task := range v.plan.Tasks {
 		// タスク状態アイコン
 		icon := task.Status.GetIcon()
-		
+
 		// タスク名とステータス
 		taskLine := fmt.Sprintf("%s %s", icon, task.Name)
-		
+
 		// プログレスバー（実行中の場合）
 		if task.Status == models.TaskStatusInProgress && task.Progress > 0 {
 			progressBar := v.taskProgress[task.ID].ViewAs(task.Progress)
 			percentage := int(task.Progress * 100)
 			taskLine += fmt.Sprintf(" %s %d%%", progressBar, percentage)
 		}
-		
+
 		// 経過時間（実行中または完了の場合）
 		if !task.StartTime.IsZero() {
 			elapsed := task.GetElapsedTime()
@@ -264,14 +264,14 @@ func (v *ExecutionView) updateProgress(message models.ExecutionMessage) {
 func (v *ExecutionView) startExecution() tea.Cmd {
 	return func() tea.Msg {
 		v.isExecuting = true
-		
+
 		go func() {
 			ctx := context.Background()
 			result, err := v.githubClient.CreateRepositoryWithProgress(ctx, v.state, v.progressChan)
-			
+
 			// 結果を保存
 			v.result = result
-			
+
 			if err != nil {
 				v.progressChan <- models.ExecutionMessage{
 					TaskID:  "execution",
@@ -327,12 +327,12 @@ func (v *ExecutionView) listenForProgress() tea.Cmd {
 func (v *ExecutionView) SetSize(width, height int) {
 	v.width = width
 	v.height = height
-	
+
 	// プログレスバーの幅を調整
 	maxProgressWidth := width - 20
 	if maxProgressWidth > 0 {
 		v.progress.Width = min(maxProgressWidth, 60)
-		
+
 		taskProgressWidth := min(maxProgressWidth-20, 40)
 		for id, prog := range v.taskProgress {
 			prog.Width = taskProgressWidth
@@ -368,7 +368,6 @@ type ExecutionProgressMsg struct {
 }
 
 type ExecutionTickMsg struct{}
-
 
 // StepChangeCmd はステップ変更コマンドを作成する
 func StepChangeCmd(step models.Step) tea.Cmd {

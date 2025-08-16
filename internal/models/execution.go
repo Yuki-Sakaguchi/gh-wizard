@@ -57,7 +57,7 @@ type ExecutionTask struct {
 	Name          string
 	Description   string
 	Status        TaskStatus
-	Progress      float64       // 0.0 - 1.0
+	Progress      float64 // 0.0 - 1.0
 	StartTime     time.Time
 	EndTime       time.Time
 	Duration      time.Duration
@@ -81,11 +81,11 @@ func (et *ExecutionTask) GetElapsedTime() time.Duration {
 	if et.StartTime.IsZero() {
 		return 0
 	}
-	
+
 	if et.IsCompleted() || et.IsFailed() {
 		return et.Duration
 	}
-	
+
 	return time.Since(et.StartTime)
 }
 
@@ -184,13 +184,13 @@ func (ep *ExecutionPlan) GetCurrentTask() *ExecutionTask {
 	if ep.CurrentTaskID == "" {
 		return nil
 	}
-	
+
 	for i := range ep.Tasks {
 		if ep.Tasks[i].ID == ep.CurrentTaskID {
 			return &ep.Tasks[i]
 		}
 	}
-	
+
 	return nil
 }
 
@@ -236,7 +236,7 @@ func (ep *ExecutionPlan) UpdateTaskStatus(taskID string, status TaskStatus, prog
 // calculateOverallProgress は全体の進捗を計算する
 func (ep *ExecutionPlan) calculateOverallProgress() {
 	totalProgress := 0.0
-	
+
 	for _, task := range ep.Tasks {
 		taskProgress := task.Progress
 		if task.Status == TaskStatusCompleted || task.Status == TaskStatusSkipped {
@@ -244,7 +244,7 @@ func (ep *ExecutionPlan) calculateOverallProgress() {
 		}
 		totalProgress += taskProgress * task.Weight
 	}
-	
+
 	ep.OverallProgress = totalProgress
 }
 
@@ -291,20 +291,20 @@ func (ep *ExecutionPlan) GetEstimatedRemainingTime() time.Duration {
 	if ep.OverallProgress <= 0 {
 		return ep.EstimatedTotal
 	}
-	
+
 	elapsedTime := ep.GetElapsedTime()
 	if elapsedTime <= 0 {
 		return ep.EstimatedTotal
 	}
-	
+
 	// 現在の進捗から残り時間を推定
 	estimatedTotalTime := time.Duration(float64(elapsedTime) / ep.OverallProgress)
 	remainingTime := estimatedTotalTime - elapsedTime
-	
+
 	if remainingTime < 0 {
 		return 0
 	}
-	
+
 	return remainingTime
 }
 
