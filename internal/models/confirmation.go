@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 )
@@ -298,26 +299,37 @@ func getCurrentUser() string {
 
 // getCurrentUserWithClient は現在のGitHubユーザー名を取得する
 func getCurrentUserWithClient(githubClient interface{}) string {
-	// GitHubクライアントが提供されている場合は実際のユーザー名を取得
-	if client, ok := githubClient.(interface {
-		GetCurrentUser() (*githubUser, error)
-	}); ok && client != nil {
-		if user, err := client.GetCurrentUser(); err == nil && user != nil {
-			return user.Login
-		}
+	// デバッグ出力を追加
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: getCurrentUserWithClient called, client type: %T\n", githubClient)
 	}
-
-	// 代替案: 型アサーションが失敗した場合のデバッグ
-	if githubClient != nil {
-		// インターフェースで任意の型のGetCurrentUserメソッドを試す
-		if userInterface := tryGetCurrentUserInterface(githubClient); userInterface != nil {
-			if login := extractLoginFromUser(userInterface); login != "" {
-				return login
+	
+	// もしクライアントがnilの場合は、直接GitHubCLIから取得を試行
+	if githubClient == nil {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Client is nil, trying direct approach\n")
+		}
+		return "your-username"
+	}
+	
+	// より汎用的な型アサーション - どんな構造体でも試行
+	if userInterface := tryGetCurrentUserInterface(githubClient); userInterface != nil {
+		if login := extractLoginFromUser(userInterface); login != "" {
+			if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+				defer debugFile.Close()
+				fmt.Fprintf(debugFile, "DEBUG: Extracted login: %s\n", login)
 			}
+			return login
 		}
 	}
 
 	// フォールバック: 簡易実装
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: Fallback to your-username\n")
+	}
 	return "your-username"
 }
 
@@ -329,16 +341,76 @@ type githubUser struct {
 	AvatarURL string `json:"avatar_url"`
 }
 
-// tryGetCurrentUserInterface は任意の型のGetCurrentUserメソッドを呼び出す
+// tryGetCurrentUserInterface は任意の型のGetCurrentUserメソッドを呼び出す  
 func tryGetCurrentUserInterface(client interface{}) interface{} {
-	// リフレクションを使わずに一般的なケースを試行
+	// デバッグ出力
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: tryGetCurrentUserInterface called\n")
+	}
+	
+	// github.User型に対応した型アサーション
+	type UserWithLogin struct {
+		Login     string `json:"login"`
+		Name      string `json:"name"`
+		Email     string `json:"email"`
+		AvatarURL string `json:"avatar_url"`
+	}
+	
 	type getCurrentUserMethod interface {
-		GetCurrentUser() (interface{}, error)
+		GetCurrentUser() (*UserWithLogin, error)
 	}
 
 	if c, ok := client.(getCurrentUserMethod); ok {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Type assertion for GetCurrentUser with UserWithLogin succeeded\n")
+		}
 		if user, err := c.GetCurrentUser(); err == nil {
+			if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+				defer debugFile.Close()
+				fmt.Fprintf(debugFile, "DEBUG: GetCurrentUser() returned: %T = %+v\n", user, user)
+			}
 			return user
+		} else {
+			if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+				defer debugFile.Close()
+				fmt.Fprintf(debugFile, "DEBUG: GetCurrentUser() error: %v\n", err)
+			}
+		}
+	} else {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Type assertion for GetCurrentUser with UserWithLogin failed\n")
+		}
+	}
+	
+	// フォールバック：より汎用的な型
+	type genericGetCurrentUserMethod interface {
+		GetCurrentUser() (interface{}, error)
+	}
+
+	if c, ok := client.(genericGetCurrentUserMethod); ok {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Type assertion for generic GetCurrentUser succeeded\n")
+		}
+		if user, err := c.GetCurrentUser(); err == nil {
+			if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+				defer debugFile.Close()
+				fmt.Fprintf(debugFile, "DEBUG: Generic GetCurrentUser() returned: %T = %+v\n", user, user)
+			}
+			return user
+		} else {
+			if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+				defer debugFile.Close()
+				fmt.Fprintf(debugFile, "DEBUG: Generic GetCurrentUser() error: %v\n", err)
+			}
+		}
+	} else {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Type assertion for generic GetCurrentUser failed\n")
 		}
 	}
 
@@ -347,6 +419,62 @@ func tryGetCurrentUserInterface(client interface{}) interface{} {
 
 // extractLoginFromUser はユーザーオブジェクトからログイン名を抽出
 func extractLoginFromUser(user interface{}) string {
+	// デバッグ出力
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: extractLoginFromUser called, user type: %T, value: %+v\n", user, user)
+	}
+	
+	// Loginフィールドを持つ任意の型に対応（リフレクション代わり）
+	type LoginProvider interface {
+		GetLogin() string
+	}
+	
+	if loginProvider, ok := user.(LoginProvider); ok {
+		login := loginProvider.GetLogin()
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Found LoginProvider with Login: %s\n", login)
+		}
+		return login
+	}
+	
+	// 実際のgithub.User型のパターン（ポインタ型） - より多くのバリエーションを試行
+	type UserType1 struct {
+		Login     string `json:"login"`
+		Name      string `json:"name"`
+		Email     string `json:"email"`
+		AvatarURL string `json:"avatar_url"`
+	}
+	
+	if u, ok := user.(*UserType1); ok && u != nil {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Found UserType1 pointer with Login: %s\n", u.Login)
+		}
+		return u.Login
+	}
+	
+	// 直接的な型アサーション - runtime type information の確認
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: Trying to match actual runtime type: %T\n", user)
+	}
+	
+	// github.User構造体のパターン（値型）
+	if u, ok := user.(struct {
+		Login     string `json:"login"`
+		Name      string `json:"name"`
+		Email     string `json:"email"`
+		AvatarURL string `json:"avatar_url"`
+	}); ok {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Found value struct with Login: %s\n", u.Login)
+		}
+		return u.Login
+	}
+
 	// 一般的な構造体パターンを試行
 	if u, ok := user.(struct {
 		Login     string
@@ -354,6 +482,10 @@ func extractLoginFromUser(user interface{}) string {
 		Email     string
 		AvatarURL string
 	}); ok {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Found general struct with Login: %s\n", u.Login)
+		}
 		return u.Login
 	}
 
@@ -361,9 +493,17 @@ func extractLoginFromUser(user interface{}) string {
 	if u, ok := user.(struct {
 		Login string
 	}); ok {
+		if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+			defer debugFile.Close()
+			fmt.Fprintf(debugFile, "DEBUG: Found simple Login struct: %s\n", u.Login)
+		}
 		return u.Login
 	}
 
+	if debugFile, err := os.OpenFile("/tmp/gh-wizard-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
+		defer debugFile.Close()
+		fmt.Fprintf(debugFile, "DEBUG: No matching type found for extracting Login\n")
+	}
 	return ""
 }
 
