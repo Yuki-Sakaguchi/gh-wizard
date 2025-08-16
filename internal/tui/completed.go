@@ -155,15 +155,15 @@ func (v *CompletedView) renderRepositoryInfo() string {
 	// リポジトリ設定の詳細
 	if v.state.RepoConfig != nil {
 		config := v.state.RepoConfig
-		
+
 		repoName := v.styles.Text.Render(fmt.Sprintf("   名前: %s", config.Name))
 		lines = append(lines, repoName)
-		
+
 		if config.Description != "" {
 			repoDesc := v.styles.Text.Render(fmt.Sprintf("   説明: %s", config.Description))
 			lines = append(lines, repoDesc)
 		}
-		
+
 		var features []string
 		if config.IsPrivate {
 			features = append(features, "プライベート")

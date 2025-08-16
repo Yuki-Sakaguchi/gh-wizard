@@ -21,26 +21,26 @@ type ConfirmationView struct {
 
 	// 確認画面のデータ
 	confirmationData *models.ConfirmationData
-	
+
 	// UI状態
-	selectedAction    int  // 選択中のアクション
-	showWarnings     bool // 警告表示の切り替え
-	showCommand      bool // 実行コマンド表示の切り替え
-	
+	selectedAction int  // 選択中のアクション
+	showWarnings   bool // 警告表示の切り替え
+	showCommand    bool // 実行コマンド表示の切り替え
+
 	// レイアウト設定
-	maxSectionWidth  int
-	contentPadding   int
+	maxSectionWidth int
+	contentPadding  int
 }
 
 func NewConfirmationView(state *models.WizardState, styles *Styles, githubClient github.Client) *ConfirmationView {
 	return &ConfirmationView{
-		state:           state,
-		styles:          styles,
-		githubClient:    githubClient,
-		selectedAction:  2, // デフォルトは "リポジトリ作成"
-		showWarnings:    false,
-		showCommand:     false,
-		contentPadding:  2,
+		state:          state,
+		styles:         styles,
+		githubClient:   githubClient,
+		selectedAction: 2, // デフォルトは "リポジトリ作成"
+		showWarnings:   false,
+		showCommand:    false,
+		contentPadding: 2,
 	}
 }
 
@@ -55,7 +55,7 @@ func (v *ConfirmationView) Update(msg tea.Msg) (ViewController, tea.Cmd) {
 	case tea.KeyMsg:
 		return v.handleKeyPress(msg)
 	}
-	
+
 	return v, nil
 }
 
@@ -201,15 +201,15 @@ func (v *ConfirmationView) calculateLayout() {
 
 func (v *ConfirmationView) renderSection(section models.ConfirmationSection) string {
 	var lines []string
-	
+
 	// セクションタイトル
 	titleStyle := v.styles.Subtitle.Copy().
 		Bold(true).
 		Foreground(lipgloss.Color(v.styles.Colors.Primary))
-	
+
 	sectionTitle := titleStyle.Render(section.Icon + " " + section.Title)
 	lines = append(lines, sectionTitle)
-	
+
 	// タイトルの下に区切り線を追加
 	separator := strings.Repeat("─", runewidth.StringWidth(section.Title)+3)
 	lines = append(lines, v.styles.Debug.Render(separator))
@@ -228,11 +228,11 @@ func (v *ConfirmationView) renderSection(section models.ConfirmationSection) str
 
 	// セクションをボーダーで囲む
 	content := strings.Join(lines, "\n")
-	
+
 	sectionStyle := v.styles.Border.Copy().
 		Width(v.maxSectionWidth).
 		Padding(1, 2)
-	
+
 	return sectionStyle.Render(content)
 }
 
@@ -254,7 +254,7 @@ func (v *ConfirmationView) renderItem(item models.ConfirmationItem) string {
 	if item.Warning {
 		valueStyle = valueStyle.Foreground(lipgloss.Color(v.styles.Colors.Warning))
 	}
-	
+
 	value := valueStyle.Render(item.Value)
 
 	// ラベル幅を調整してアライメント（runewidth使用）
@@ -264,17 +264,17 @@ func (v *ConfirmationView) renderItem(item models.ConfirmationItem) string {
 	if currentWidth > labelWidth {
 		labelWidth = currentWidth + 2
 	}
-	
+
 	// ラベル部分のスタイル
 	labelStyle := v.styles.Text.Copy()
 	if item.Important {
 		labelStyle = labelStyle.Bold(true)
 	}
-	
+
 	// 日本語対応のパディング
 	paddedLabel := padString(labelText, labelWidth)
 	styledLabel := labelStyle.Render(paddedLabel)
-	
+
 	line := styledLabel + " " + value
 
 	// 説明がある場合は追加
@@ -296,19 +296,19 @@ func (v *ConfirmationView) renderWarnings() string {
 
 	var lines []string
 	lines = append(lines, v.styles.Warning.Render("⚠️  警告事項"))
-	
+
 	for i, warning := range v.confirmationData.Warnings {
 		warningText := fmt.Sprintf("%d. %s", i+1, warning)
 		lines = append(lines, v.styles.Warning.Render(warningText))
 	}
 
 	content := strings.Join(lines, "\n")
-	
+
 	warningStyle := v.styles.Border.Copy().
 		Width(v.maxSectionWidth).
 		Padding(1, 2).
 		BorderForeground(lipgloss.Color(v.styles.Colors.Warning))
-	
+
 	return warningStyle.Render(content)
 }
 
@@ -320,17 +320,17 @@ func (v *ConfirmationView) renderCommand() string {
 
 	var lines []string
 	lines = append(lines, v.styles.Info.Render("🔧 実行コマンド"))
-	
+
 	commandLine := "gh " + strings.Join(command, " ")
 	lines = append(lines, v.styles.Debug.Render(commandLine))
 
 	content := strings.Join(lines, "\n")
-	
+
 	commandStyle := v.styles.Border.Copy().
 		Width(v.maxSectionWidth).
 		Padding(1, 2).
 		BorderForeground(lipgloss.Color(v.styles.Colors.Info))
-	
+
 	return commandStyle.Render(content)
 }
 
@@ -339,7 +339,7 @@ func (v *ConfirmationView) renderActions() string {
 
 	for i, action := range v.confirmationData.Actions {
 		buttonText := fmt.Sprintf("[%s] %s", action.GetKey(), action.String())
-		
+
 		var buttonStyle lipgloss.Style
 		if i == v.selectedAction {
 			// 選択中のボタン
@@ -355,7 +355,7 @@ func (v *ConfirmationView) renderActions() string {
 				Border(lipgloss.RoundedBorder()).
 				BorderForeground(lipgloss.Color(v.styles.Colors.Debug))
 		}
-		
+
 		actionButtons = append(actionButtons, buttonStyle.Render(buttonText))
 	}
 
@@ -365,12 +365,12 @@ func (v *ConfirmationView) renderActions() string {
 		Width(v.maxSectionWidth).
 		Align(lipgloss.Center).
 		Render(buttonsLine)
-	
+
 	instructionText := v.styles.Text.Copy().
 		Align(lipgloss.Center).
 		Width(v.maxSectionWidth).
 		Render("実行するアクションを選択してください:")
-	
+
 	return instructionText + "\n\n" + centeredButtons
 }
 

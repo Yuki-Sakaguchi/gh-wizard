@@ -6,9 +6,9 @@ import (
 
 func TestTemplate_GetDisplayName(t *testing.T) {
 	tests := []struct {
-		name        string
-		template    Template
-		expected    string
+		name     string
+		template Template
+		expected string
 	}{
 		{
 			name: "説明文ありの場合",

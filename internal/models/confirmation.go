@@ -68,20 +68,20 @@ type ConfirmationItem struct {
 
 // ConfirmationSection は確認画面のセクションを表す
 type ConfirmationSection struct {
-	Title       string
-	Icon        string
-	Items       []ConfirmationItem
-	Warning     string
-	HasWarning  bool
+	Title      string
+	Icon       string
+	Items      []ConfirmationItem
+	Warning    string
+	HasWarning bool
 }
 
 // ConfirmationData は確認画面全体のデータを表す
 type ConfirmationData struct {
-	Sections       []ConfirmationSection
-	Actions        []ConfirmationAction
-	Warnings       []string
-	RepositoryURL  string
-	EstimatedTime  string
+	Sections      []ConfirmationSection
+	Actions       []ConfirmationAction
+	Warnings      []string
+	RepositoryURL string
+	EstimatedTime string
 }
 
 // BuildConfirmationData はウィザード状態から確認画面データを構築する（後方互換用）
@@ -120,7 +120,7 @@ func BuildConfirmationDataWithClient(state *WizardState, githubClient interface{
 
 	// リポジトリURLとその他の情報
 	if state.RepoConfig != nil {
-		data.RepositoryURL = fmt.Sprintf("https://github.com/%s/%s", 
+		data.RepositoryURL = fmt.Sprintf("https://github.com/%s/%s",
 			getCurrentUserWithClient(githubClient), state.RepoConfig.Name)
 		data.EstimatedTime = "約30秒"
 	}
@@ -241,7 +241,7 @@ func buildRepositorySection(config *RepositoryConfig) ConfirmationSection {
 func buildDestinationSection(state *WizardState, githubClient interface{}) ConfirmationSection {
 	user := getCurrentUserWithClient(githubClient)
 	url := "（未設定）"
-	
+
 	if state.RepoConfig != nil && state.RepoConfig.Name != "" {
 		url = fmt.Sprintf("https://github.com/%s/%s", user, state.RepoConfig.Name)
 	}
@@ -300,20 +300,72 @@ func getCurrentUser() string {
 func getCurrentUserWithClient(githubClient interface{}) string {
 	// GitHubクライアントが提供されている場合は実際のユーザー名を取得
 	if client, ok := githubClient.(interface {
-		GetCurrentUser() (interface{}, error)
+		GetCurrentUser() (*githubUser, error)
 	}); ok && client != nil {
 		if user, err := client.GetCurrentUser(); err == nil && user != nil {
-			// github.User 型を期待
-			if githubUser, ok := user.(struct{ Login string }); ok {
-				return githubUser.Login
+			return user.Login
+		}
+	}
+
+	// 代替案: 型アサーションが失敗した場合のデバッグ
+	if githubClient != nil {
+		// インターフェースで任意の型のGetCurrentUserメソッドを試す
+		if userInterface := tryGetCurrentUserInterface(githubClient); userInterface != nil {
+			if login := extractLoginFromUser(userInterface); login != "" {
+				return login
 			}
 		}
 	}
-	
+
 	// フォールバック: 簡易実装
 	return "your-username"
 }
 
+// githubUser はGitHubユーザーを表すローカル型
+type githubUser struct {
+	Login     string `json:"login"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	AvatarURL string `json:"avatar_url"`
+}
+
+// tryGetCurrentUserInterface は任意の型のGetCurrentUserメソッドを呼び出す
+func tryGetCurrentUserInterface(client interface{}) interface{} {
+	// リフレクションを使わずに一般的なケースを試行
+	type getCurrentUserMethod interface {
+		GetCurrentUser() (interface{}, error)
+	}
+
+	if c, ok := client.(getCurrentUserMethod); ok {
+		if user, err := c.GetCurrentUser(); err == nil {
+			return user
+		}
+	}
+
+	return nil
+}
+
+// extractLoginFromUser はユーザーオブジェクトからログイン名を抽出
+func extractLoginFromUser(user interface{}) string {
+	// 一般的な構造体パターンを試行
+	if u, ok := user.(struct {
+		Login     string
+		Name      string
+		Email     string
+		AvatarURL string
+	}); ok {
+		return u.Login
+	}
+
+	// シンプルなLoginフィールドのみ
+	if u, ok := user.(struct {
+		Login string
+	}); ok {
+		return u.Login
+	}
+
+	return ""
+}
 
 // GetActionByKey はキー入力からアクションを取得する
 func GetActionByKey(key string) (ConfirmationAction, bool) {
@@ -322,13 +374,13 @@ func GetActionByKey(key string) (ConfirmationAction, bool) {
 		ActionCancel,
 		ActionCreateRepository,
 	}
-	
+
 	for _, action := range actions {
 		if action.GetKey() == key {
 			return action, true
 		}
 	}
-	
+
 	return ActionModifySettings, false
 }
 
@@ -337,6 +389,6 @@ func (cd *ConfirmationData) FormatRepositoryCommand(state *WizardState) []string
 	if state.RepoConfig == nil {
 		return []string{}
 	}
-	
+
 	return state.RepoConfig.GetGHCommand(state.SelectedTemplate)
 }

@@ -101,7 +101,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case StepChangeMsg:
 		// ステップ変更メッセージ
 		return a.changeStep(msg.Step)
-		
+
 	case models.StepChangeWithResultMsg:
 		// 結果付きステップ変更メッセージ
 		return a.changeStepWithResult(msg.Step, msg.Result)
