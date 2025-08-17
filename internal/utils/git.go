@@ -6,6 +6,40 @@ import (
 	"strings"
 )
 
+// CheckGitInstalled Gitがインストールされているかチェック
+func CheckGitInstalled() error {
+	_, err := exec.LookPath("git")
+	if err != nil {
+		return fmt.Errorf("gitがインストールされていません: %w", err)
+	}
+	return nil
+}
+
+// GetGitVersion Gitのバージョンを取得
+func GetGitVersion() (string, error) {
+	cmd := exec.Command("git", "--version")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("gitのバージョン取得に失敗: %w", err)
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
+// CheckGitVersion Gitのバージョンが要件を満たすかチェック
+func CheckGitVersion() error {
+	version, err := GetGitVersion()
+	if err != nil {
+		return err
+	}
+
+	// 最低限gitがインストールされていればOKとする
+	if !strings.Contains(version, "git version") {
+		return fmt.Errorf("無効なgitバージョン: %s", version)
+	}
+
+	return nil
+}
+
 // CheckGHInstalled は GitHub CLI がインストールされているかどうかをチェックする
 func CheckGHInstalled() error {
 	_, err := exec.LookPath("gh")
