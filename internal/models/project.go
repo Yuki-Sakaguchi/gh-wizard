@@ -5,10 +5,10 @@ import "fmt"
 type ProjectConfig struct {
 	Name         string    `json:"name"`
 	Description  string    `json:"description"`
-	Template     *Template `json:"template,omitempty`
+	Template     *Template `json:"template,omitempty"`
 	CreateGitHub bool      `json:"create_github"`
 	IsPrivate    bool      `json:"is_private"`
-	LocalPath    string    `json:"local_path`
+	LocalPath    string    `json:"local_path"`
 }
 
 // Validate は設定値の妥当性をチェックする
