@@ -1,8 +1,11 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestConfig_Validate(t *testing.T) {
@@ -46,28 +49,6 @@ func TestConfig_Validate(t *testing.T) {
 	}
 }
 
-func TestConfig_AddRecentTemplate(t *testing.T) {
-	config := GetDefault()
-
-	// テンプレートを追加
-	config.AddRecentTemplate("template1")
-	config.AddRecentTemplate("template2")
-	config.AddRecentTemplate("template1")
-
-	// 期待値: 重複は削除され、最新が先頭になるため ["template1", "template2"]
-	expected := []string{"template1", "template2"}
-
-	if len(config.RecentTemplates) != len(expected) {
-		t.Errorf("期待される長さ %d, 実際の長さ %d", len(expected), len(config.RecentTemplates))
-	}
-
-	for i, want := range expected {
-		if config.RecentTemplates[i] != want {
-			t.Errorf("インデックス %d: 期待値 %s, 実際の値 %s", i, want, config.RecentTemplates[i])
-		}
-	}
-}
-
 func TestSaveAndLoad(t *testing.T) {
 	// 一時ディレクトリでテスト
 	tempDir, err := os.MkdirTemp("", "gh-wizard-test")
@@ -105,4 +86,36 @@ func TestSaveAndLoad(t *testing.T) {
 	if loadedConfig.CacheTimeout != 60 {
 		t.Errorf("CacheTimeout: 期待値 60, 実際の値 %d", loadedConfig.CacheTimeout)
 	}
+}
+
+func TestConfig_AddRecentTemplate(t *testing.T) {
+	config := GetDefault()
+
+	// 新しいテンプレートを追加
+	config.AddRecentTemplate("user/template1")
+	assert.Len(t, config.RecentTemplates, 1)
+	assert.Equal(t, "user/template1", config.RecentTemplates[0])
+
+	// 別のテンプレートを追加
+	config.AddRecentTemplate("user/template2")
+	assert.Len(t, config.RecentTemplates, 2)
+	assert.Equal(t, "user/template2", config.RecentTemplates[0]) // 最新が最初
+
+	// 重複するテンプレートを追加
+	config.AddRecentTemplate("user/template1")
+	assert.Len(t, config.RecentTemplates, 2)                     // 長さは変わらない
+	assert.Equal(t, "user/template1", config.RecentTemplates[0]) // 最前面に移動
+}
+
+func TestConfig_RecentTemplateLimit(t *testing.T) {
+	config := GetDefault()
+
+	// 11個のテンプレートを追加（制限は10個）
+	for i := 0; i < 11; i++ {
+		config.AddRecentTemplate(fmt.Sprintf("user/template%d", i))
+	}
+
+	assert.Len(t, config.RecentTemplates, 10)                     // 最大10個
+	assert.Equal(t, "user/template10", config.RecentTemplates[0]) // 最新
+	assert.Equal(t, "user/template1", config.RecentTemplates[9])  // 最古（template0は削除済み）
 }
