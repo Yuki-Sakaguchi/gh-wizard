@@ -19,6 +19,7 @@ type Template struct {
 	IsTemplate  bool      `json:"is_template"`
 	Private     bool      `json:"private"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	CloneURL    string    `json:"clone_url"`
 }
 
 // GetDisplayName はテンプレートリポジトリの表示名を返す
