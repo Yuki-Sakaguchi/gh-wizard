@@ -97,13 +97,22 @@ func (v *ProjectNameValidator) validateGitHubRules(name string) error {
 	if strings.HasSuffix(name, "-") {
 		return fmt.Errorf("ハイフンで終わるプロジェクト名は使用できません")
 	}
+	if strings.HasPrefix(name, "_") {
+		return fmt.Errorf("アンダースコアで始まるプロジェクト名は使用できません")
+	}
+	if strings.HasSuffix(name, "_") {
+		return fmt.Errorf("アンダースコアで終わるプロジェクト名は使用できません")
+	}
 
 	// 連続ピリオドや連続ハイフンのチェック
 	if strings.Contains(name, "..") {
-		return fmt.Errorf("連続ピリオドは使用できません")
+		return fmt.Errorf("連続するピリオドは使用できません")
 	}
 	if strings.Contains(name, "--") {
-		return fmt.Errorf("連続ハイフンは使用できません")
+		return fmt.Errorf("連続するハイフンは使用できません")
+	}
+	if strings.Contains(name, "__") {
+		return fmt.Errorf("連続するアンダースコアは使用できません")
 	}
 
 	return nil
@@ -112,11 +121,20 @@ func (v *ProjectNameValidator) validateGitHubRules(name string) error {
 // validateReservedNames は予約語をチェックする
 func (v *ProjectNameValidator) validateReservedNames(name string) error {
 	// システム予約語
-	systemReserved := []string{".", "..", "CON", "PRN", "AUX", "NUL"}
+	systemReserved := []string{".", "..", "CON", "PRN", "AUX", "NUL", "COM1", "LPT1"}
 	upperName := strings.ToUpper(name)
 	for _, reserved := range systemReserved {
 		if upperName == reserved {
-			return fmt.Errorf("'%s'は予約語のため使用できません", name)
+			return fmt.Errorf("'%s'は予約名のため使用できません", name)
+		}
+	}
+
+	// Git関連の予約語
+	gitReserved := []string{".git", ".github"}
+	lowerNameForGit := strings.ToLower(name)
+	for _, reserved := range gitReserved {
+		if lowerNameForGit == reserved {
+			return fmt.Errorf("'%s'は予約名のため使用できません", name)
 		}
 	}
 
@@ -125,7 +143,7 @@ func (v *ProjectNameValidator) validateReservedNames(name string) error {
 	lowerName := strings.ToLower(name)
 	for _, reserved := range generalReserved {
 		if lowerName == reserved {
-			return fmt.Errorf("'%s'は予約語のため使用できません", name)
+			return fmt.Errorf("'%s'は予約名のため使用できません", name)
 		}
 	}
 	
@@ -144,8 +162,9 @@ func (v *ProjectNameValidator) validateAdvancedRules(name string) error {
 		return fmt.Errorf("数字のみのプロジェクト名は推奨されません")
 	}
 
-	// 特殊文字が多すぎる場合
-	if countSpecialChars(name) > len(name)/2 {
+	// 特殊文字が多すぎる場合 (40%以上が特殊文字)
+	specialCount := countSpecialChars(name)
+	if specialCount > 0 && float64(specialCount)/float64(len(name)) >= 0.4 {
 		return fmt.Errorf("特殊文字が多すぎます")
 	}
 
@@ -183,6 +202,16 @@ func countSpecialChars(s string) int {
 // containsControlChars は制御文字が含まれているかチェックする
 func containsControlChars(s string) bool {
 	for _, r := range s {
+		if unicode.IsControl(r) {
+			return true
+		}
+	}
+	return false
+}
+
+// containsStrictControlChars は説明文用の制御文字チェック（改行、タブ、CRは許可）
+func containsStrictControlChars(s string) bool {
+	for _, r := range s {
 		if unicode.IsControl(r) && r != '\n' && r != '\r' && r != '\t' {
 			return true
 		}
@@ -211,8 +240,8 @@ func ValidateDescription(description interface{}) error {
 		return fmt.Errorf("説明は%d行以内である必要があります", maxLines)
 	}
 
-	// 制御文字チェック
-	if containsControlChars(desc) {
+	// 制御文字チェック（改行、タブ、CRは許可）
+	if containsStrictControlChars(desc) {
 		return fmt.Errorf("説明に制御文字は使用できません")
 	}
 
@@ -345,6 +374,25 @@ func (v *ConfigValidator) Validate(config *models.ProjectConfig) error {
 		if err := v.templateValidator.Validate(config.Template); err != nil {
 			return fmt.Errorf("テンプレート: %w", err)
 		}
+	}
+
+	// ローカルパス検証
+	if err := v.validateLocalPath(config.LocalPath); err != nil {
+		return fmt.Errorf("ローカルパス: %w", err)
+	}
+
+	return nil
+}
+
+// validateLocalPath はローカルパスを検証する
+func (v *ConfigValidator) validateLocalPath(localPath string) error {
+	if localPath == "" {
+		return nil // 空の場合はOK（デフォルト値が使用される）
+	}
+
+	// 相対パスの検証（../ は危険）
+	if strings.Contains(localPath, "..") {
+		return fmt.Errorf("相対パス「..」は使用できません")
 	}
 
 	return nil
