@@ -47,6 +47,14 @@ func NewSimpleMockClient() *SimpleMockClient {
 	}
 }
 
+// SearchPopularTemplates はモックテンプレート検索
+func (c *SimpleMockClient) SearchPopularTemplates(ctx context.Context) ([]models.Template, error) {
+	if c.TemplateError != nil {
+		return nil, c.TemplateError
+	}
+	return c.Templates, nil
+}
+
 // CheckAuthentication はモック認証チェック
 func (m *SimpleMockClient) CheckAuthentication(ctx context.Context) error {
 	return m.AuthError

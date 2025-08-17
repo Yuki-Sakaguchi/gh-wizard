@@ -206,5 +206,5 @@ func TestQuestionFlow_ExecuteWithMock(t *testing.T) {
 	assert.Equal(t, "Test description", config.Description)
 	assert.True(t, config.CreateGitHub)
 	assert.False(t, config.IsPrivate)
-	assert.Equal(t, 2, mockExecutor.CallCount) // メイン質問 + 条件付き質問
+	assert.Equal(t, 3, mockExecutor.CallCount) // テンプレート選択 + 基本質問 + 条件付き質問
 }
