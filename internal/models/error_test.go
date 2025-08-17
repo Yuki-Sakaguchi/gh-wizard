@@ -20,7 +20,7 @@ func TestWizardError_Error(t *testing.T) {
 				Message: "API failed",
 				Cause:   errors.New("network error"),
 			},
-			expected: "[GITHUG] API failed: network error",
+			expected: "[GITHUB] API failed: network error",
 		},
 		{
 			name: "error without cause",

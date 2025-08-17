@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -22,8 +23,38 @@ type Template struct {
 
 // GetDisplayName はテンプレートリポジトリの表示名を返す
 func (t Template) GetDisplayName() string {
-	if t.Description != "" {
-		return t.Name + " - " + t.Description
+	result := t.Name
+	
+	// Stars情報を追加
+	if t.Stars > 0 {
+		result += fmt.Sprintf(" (⭐ %d)", t.Stars)
 	}
-	return t.Name
+	
+	// 言語情報を追加
+	if t.Language != "" {
+		result += fmt.Sprintf(" [%s]", t.Language)
+	}
+	
+	return result
+}
+
+// GetShortDescription は短縮された説明を返す
+func (t Template) GetShortDescription() string {
+	if t.Description == "" {
+		return "説明なし"
+	}
+	if len(t.Description) > 72 {
+		return t.Description[:72] + "..."
+	}
+	return t.Description
+}
+
+// GetRepoURL はリポジトリのURLを返す
+func (t Template) GetRepoURL() string {
+	return "https://github.com/" + t.FullName
+}
+
+// GetIsPublic はパブリックリポジトリかどうかを返す
+func (t Template) GetIsPublic() bool {
+	return !t.Private
 }

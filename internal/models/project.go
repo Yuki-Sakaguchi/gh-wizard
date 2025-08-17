@@ -18,11 +18,11 @@ func (pc *ProjectConfig) Validate() error {
 	}
 
 	if len(pc.Name) > 100 {
-		return fmt.Errorf("プロジェクト名は100文字以内で入力してください")
+		return fmt.Errorf("プロジェクト名は最大100文字までです")
 	}
 
 	if len(pc.Description) > 500 {
-		return fmt.Errorf("説明文は500文字以内で入力してください")
+		return fmt.Errorf("説明は最大500文字までです")
 	}
 
 	return nil

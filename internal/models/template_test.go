@@ -2,11 +2,9 @@
 package models
 
 import (
-	"errors"
-    "testing"
+	"testing"
 
-    "github.com/stretchr/testify/assert"
-    "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTemplate_GetDisplayName(t *testing.T) {
@@ -43,7 +41,7 @@ func TestTemplate_GetDisplayName(t *testing.T) {
 		},
 		{
 			name: "minimal info",
-			template: Temaplate{
+			template: Template{
 				Name: "minimal-template",
 			},
 			expected: "minimal-template",
@@ -58,7 +56,7 @@ func TestTemplate_GetDisplayName(t *testing.T) {
 	}
 }
 
-func TestTemplate_GetShortDescription(t *tesing.T) {
+func TestTemplate_GetShortDescription(t *testing.T) {
 	tests := []struct {
 		name string
 		description string
@@ -81,8 +79,8 @@ func TestTemplate_GetShortDescription(t *tesing.T) {
 		},
 	}
 
-	for _, tt range tests {
-		t.Run(tt.name, func(t *testing.t) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			template := Template{Description: tt.description}
 			result := template.GetShortDescription()
 			assert.Equal(t, tt.expected, result)
@@ -119,11 +117,11 @@ func TestTemlate_IsPublic(t *testing.T) {
 		},
 	}
 
-	for _, tt range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			template := Template{private: tt.private}
+			template := Template{Private: tt.private}
 			result := template.GetIsPublic()
-			t.Equal(t, tt.expected, result)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }

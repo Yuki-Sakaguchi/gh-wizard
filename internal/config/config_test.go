@@ -89,7 +89,7 @@ func TestSaveAndLoad(t *testing.T) {
 }
 
 func TestConfig_AddRecentTemplate(t *testing.T) {
-	config := GetDefaults()
+	config := GetDefault()
 
 	// 新しいテンプレートを追加
 	config.AddRecentTemplate("user/template1")
@@ -108,7 +108,7 @@ func TestConfig_AddRecentTemplate(t *testing.T) {
 }
 
 func TestConfig_RecentTemplateLimit(t *testing.T) {
-	config := GetDefaults()
+	config := GetDefault()
 
 	// 11個のテンプレートを追加（制限は10個）
 	for i := 0; i < 11; i++ {

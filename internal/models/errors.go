@@ -2,7 +2,17 @@ package models
 
 import "fmt"
 
-// ErrorCode はエラーコードを表す
+// ErrorType はエラーの種類を表す
+type ErrorType string
+
+const (
+	ErrorTypeValidation ErrorType = "VALIDATION"
+	ErrorTypeGitHub     ErrorType = "GITHUB"
+	ErrorTypeNetwork    ErrorType = "NETWORK"
+	ErrorTypeProject    ErrorType = "PROJECT"
+)
+
+// Legacy ErrorCode constants for backward compatibility
 type ErrorCode string
 
 const (
@@ -24,27 +34,71 @@ const (
 
 // WizardError は gh-wizard 固有のエラーを表す
 type WizardError struct {
-	Code    ErrorCode
+	Type    ErrorType
 	Message string
 	Cause   error
-	Step    Step
-	Retry   bool
 }
 
 // Error は error インターフェースを満たす
-func (we WizardError) Error() string {
+func (we *WizardError) Error() string {
 	if we.Cause != nil {
-		return fmt.Sprintf("[%s] %s: %v", we.Code, we.Message, we.Cause)
+		return fmt.Sprintf("[%s] %s: %s", we.Type, we.Message, we.Cause.Error())
 	}
-	return fmt.Sprintf("[%s] %s", we.Code, we.Message)
+	return fmt.Sprintf("[%s] %s", we.Type, we.Message)
 }
 
-// NewWizardError は新しい WizardError を作成する
-func NewWizardError(code ErrorCode, message string, cause error) *WizardError {
+// Unwrap は原因となったエラーを返す
+func (we *WizardError) Unwrap() error {
+	return we.Cause
+}
+
+// IsRetryable はリトライ可能なエラーかどうかを返す
+func (we *WizardError) IsRetryable() bool {
+	switch we.Type {
+	case ErrorTypeNetwork, ErrorTypeGitHub:
+		return true
+	case ErrorTypeValidation, ErrorTypeProject:
+		return false
+	default:
+		return false
+	}
+}
+
+// NewValidationError はバリデーションエラーを作成する
+func NewValidationError(message string) *WizardError {
 	return &WizardError{
-		Code:    code,
+		Type:    ErrorTypeValidation,
+		Message: message,
+		Cause:   nil,
+	}
+}
+
+// NewGitHubError はGitHubエラーを作成する
+func NewGitHubError(message string, cause error) *WizardError {
+	return &WizardError{
+		Type:    ErrorTypeGitHub,
 		Message: message,
 		Cause:   cause,
-		Retry:   false,
+	}
+}
+
+// NewWizardError は新しい WizardError を作成する (legacy)
+func NewWizardError(code ErrorCode, message string, cause error) *WizardError {
+	var errorType ErrorType
+	switch code {
+	case ErrNetworkError:
+		errorType = ErrorTypeNetwork
+	case ErrAPIRateLimit:
+		errorType = ErrorTypeGitHub
+	case ErrInvalidRepoName:
+		errorType = ErrorTypeValidation
+	default:
+		errorType = ErrorTypeProject
+	}
+	
+	return &WizardError{
+		Type:    errorType,
+		Message: message,
+		Cause:   cause,
 	}
 }
