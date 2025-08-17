@@ -128,7 +128,7 @@ func TestWizardRunner_CheckPrerequisites(t *testing.T) {
 				t.Skip("環境依存のため統合テストでのみ実行")
 			}
 
-			runner := &WizardRunner{}
+			runner := NewWizardRunner()
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 
@@ -175,7 +175,7 @@ func TestWizardRunner_NonInteractiveMode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			runner := &WizardRunner{}
+			runner := NewWizardRunner()
 			
 			// モックテンプレートを用意
 			templates := []models.Template{
@@ -233,7 +233,7 @@ func TestWizardRunner_HandleError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			runner := &WizardRunner{}
+			runner := NewWizardRunner()
 			
 			// 標準エラーを文字列として直接キャプチャ
 			var capturedOutput bytes.Buffer
@@ -284,7 +284,7 @@ func TestWizardRunner_PrintConfiguration(t *testing.T) {
 		LocalPath:    "./test-project",
 	}
 
-	runner := &WizardRunner{}
+	runner := NewWizardRunner()
 
 	// 標準出力をキャプチャ
 	var capturedOutput bytes.Buffer
@@ -326,7 +326,7 @@ func TestWizardRunner_Performance(t *testing.T) {
 		t.Skip("パフォーマンステストをスキップ")
 	}
 
-	runner := &WizardRunner{}
+	runner := NewWizardRunner()
 	
 	// モックデータの準備
 	templates := make([]models.Template, 100) // 大量のテンプレート
@@ -352,7 +352,7 @@ func TestWizardRunner_Performance(t *testing.T) {
 }
 
 func BenchmarkWizardRunner_NonInteractiveMode(b *testing.B) {
-	runner := &WizardRunner{}
+	runner := NewWizardRunner()
 	templates := []models.Template{
 		{Name: "template", FullName: "user/template", Stars: 5},
 	}

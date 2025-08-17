@@ -61,7 +61,8 @@ func formatTemplateOption(template models.Template) string {
 
 // findSelectedTemplate は選択されたテンプレートを取得する
 func (qf *QuestionFlow) findSelectedTemplate() *models.Template {
-	if qf.answers.Template == "テンプレートなし" {
+	// テンプレートが選択されていない場合はnil
+	if qf.answers.Template == "" {
 		return nil
 	}
 
@@ -89,12 +90,16 @@ func (qf *QuestionFlow) GetProjectConfig() *models.ProjectConfig {
 
 // CreateQuestions はテンプレート情報を基に質問を生成する
 func (qf *QuestionFlow) CreateQuestions() []*survey.Question {
-	// テンプレート選択肢を生成
-	templateOptions := make([]string, len(qf.templates)+1)
+	// テンプレート選択肢を生成（テンプレートなしオプションは除去）
+	if len(qf.templates) == 0 {
+		// テンプレートが0個の場合はスキップ
+		return []*survey.Question{}
+	}
+	
+	templateOptions := make([]string, len(qf.templates))
 	for i, t := range qf.templates {
 		templateOptions[i] = formatTemplateOption(t)
 	}
-	templateOptions[len(qf.templates)] = "テンプレートなし"
 
 	questions := []*survey.Question{
 		{
@@ -107,29 +112,6 @@ func (qf *QuestionFlow) CreateQuestions() []*survey.Question {
 				},
 			},
 			Validate: survey.Required,
-		},
-		{
-			Name: "projectName",
-			Prompt: &survey.Input{
-				Message: "プロジェクト名:",
-				Help:    "英数字、ハイフン、アンダースコアが使用できます",
-			},
-			Validate: survey.Required,
-		},
-		{
-			Name: "description",
-			Prompt: &survey.Input{
-				Message: "説明 (オプション):",
-				Help:    "プロジェクトの説明を入力してください",
-			},
-		},
-		{
-			Name: "createGitHub",
-			Prompt: &survey.Confirm{
-				Message: "GitHubにリポジトリを作成しますか？",
-				Default: true,
-				Help:    "Noの場合はローカルにのみプロジェクトが作成されます",
-			},
 		},
 	}
 
@@ -155,11 +137,49 @@ func (qf *QuestionFlow) CreateConditionalQuestions() []*survey.Question {
 	return questions
 }
 
+// CreateBasicQuestions はプロジェクトの基本情報に関する質問を作成する
+func (qf *QuestionFlow) CreateBasicQuestions() []*survey.Question {
+	return []*survey.Question{
+		{
+			Name: "projectName",
+			Prompt: &survey.Input{
+				Message: "プロジェクト名を入力してください:",
+				Help:    "英数字、ハイフン、アンダースコアが使用できます",
+			},
+			Validate: survey.Required,
+		},
+		{
+			Name: "description",
+			Prompt: &survey.Input{
+				Message: "プロジェクトの説明を入力してください (任意):",
+				Help:    "プロジェクトの簡単な説明",
+			},
+		},
+		{
+			Name: "createGitHub",
+			Prompt: &survey.Confirm{
+				Message: "GitHubにリポジトリを作成しますか？",
+				Default: true,
+				Help:    "Noの場合はローカルにのみプロジェクトが作成されます",
+			},
+		},
+	}
+}
+
 // Execute は質問フローを実行してProjectConfigを返す
 func (qf *QuestionFlow) Execute() (*models.ProjectConfig, error) {
-	// 基本的な質問を実行
+	// テンプレート選択質問を実行（テンプレートが利用可能な場合のみ）
 	questions := qf.CreateQuestions()
-	err := qf.surveyExecutor.Ask(questions, qf.answers)
+	if len(questions) > 0 {
+		err := qf.surveyExecutor.Ask(questions, qf.answers)
+		if err != nil {
+			return nil, fmt.Errorf("テンプレート選択の実行に失敗: %w", err)
+		}
+	}
+	
+	// プロジェクト基本情報の質問
+	basicQuestions := qf.CreateBasicQuestions()
+	err := qf.surveyExecutor.Ask(basicQuestions, qf.answers)
 	if err != nil {
 		return nil, fmt.Errorf("基本質問の実行に失敗: %w", err)
 	}

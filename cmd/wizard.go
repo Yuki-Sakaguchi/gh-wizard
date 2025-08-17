@@ -9,6 +9,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
+	"github.com/Yuki-Sakaguchi/gh-wizard/internal/github"
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/wizard"
 )
@@ -41,7 +42,7 @@ func runWizard(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	runner := &WizardRunner{}
+	runner := NewWizardRunner()
 
 	// 前提条件チェック
 	if !dryRunFlag {
@@ -50,11 +51,16 @@ func runWizard(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// テンプレート一覧を取得（モック実装）
-	templates := []models.Template{
-		{Name: "basic", FullName: "github/basic", Stars: 100},
-		{Name: "react", FullName: "facebook/react-template", Stars: 500},
-		{Name: "go", FullName: "golang/go-template", Stars: 200},
+	// 実際のテンプレート一覧を取得
+	fmt.Println("🔍 人気のテンプレートを検索中...")
+	templates, templateErr := runner.githubClient.SearchPopularTemplates(ctx)
+	if templateErr != nil {
+		// テンプレート取得に失敗した場合はテンプレートなしで続行
+		fmt.Printf("⚠️  テンプレート検索に失敗しました: %v\n", templateErr)
+		fmt.Println("テンプレートなしで続行します。")
+		templates = []models.Template{}
+	} else {
+		fmt.Printf("✅ %d個のテンプレートを見つけました\n", len(templates))
 	}
 
 	var config *models.ProjectConfig
@@ -103,7 +109,16 @@ func runWizard(cmd *cobra.Command, args []string) error {
 }
 
 // WizardRunner はウィザードの実行を管理する構造体
-type WizardRunner struct{}
+type WizardRunner struct {
+	githubClient github.Client
+}
+
+// NewWizardRunner は新しいWizardRunnerを作成する
+func NewWizardRunner() *WizardRunner {
+	return &WizardRunner{
+		githubClient: github.NewClient(),
+	}
+}
 
 // checkPrerequisites は必要なコマンドが利用可能かチェック
 func (wr *WizardRunner) checkPrerequisites(ctx context.Context) error {
