@@ -2,40 +2,39 @@ package models
 
 import (
 	"errors"
-    "testing"
+	"testing"
 
-    "github.com/stretchr/testify/assert"
-    "github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestWizardError_Error(t *testing.T) {
 	tests := []struct {
-		name string
-		err *WizardError
+		name     string
+		err      *WizardError
 		expected string
 	}{
 		{
 			name: "error with cause",
 			err: &WizardError{
-				Type: ErrorTypeGitHub,
+				Type:    ErrorTypeGitHub,
 				Message: "API failed",
-				Cause: errors.New("network error"),
+				Cause:   errors.New("network error"),
 			},
-			expected: "[GITHUG] API failed: network error"
+			expected: "[GITHUG] API failed: network error",
 		},
 		{
 			name: "error without cause",
 			err: &WizardError{
-				Type: ErrorTypeValidation,
+				Type:    ErrorTypeValidation,
 				Message: "Invalid input",
-				Cause: nil,
+				Cause:   nil,
 			},
-			expected: "[VALIDATION] Invalid input"
+			expected: "[VALIDATION] Invalid input",
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *tesging.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			result := tt.err.Error()
 			assert.Equal(t, tt.expected, result)
 		})
@@ -45,9 +44,9 @@ func TestWizardError_Error(t *testing.T) {
 func TestWizardError_Unwrap(t *testing.T) {
 	originalErr := errors.New("original error")
 	wizardErr := &WizardError{
-		Type: ErrorTypeNetwork,
+		Type:    ErrorTypeNetwork,
 		Message: "Network failed",
-		Cause: originalErr,
+		Cause:   originalErr,
 	}
 
 	unwrapped := wizardErr.Unwrap()
@@ -56,36 +55,36 @@ func TestWizardError_Unwrap(t *testing.T) {
 
 func TestWizardError_IsRetryable(t *testing.T) {
 	tests := []struct {
-		name string
+		name      string
 		errorType ErrorType
-		expected bool
+		expected  bool
 	}{
 		{
-			name: "network error is retryable",
+			name:      "network error is retryable",
 			errorType: ErrorTypeNetwork,
-			expected: true
+			expected:  true,
 		},
 		{
-            name:      "github error is retryable",
-            errorType: ErrorTypeGitHub,
-            expected:  true,
-        },
-        {
-            name:      "validation error is not retryable",
-            errorType: ErrorTypeValidation,
-            expected:  false,
-        },
-        {
-            name:      "project error is not retryable",
-            errorType: ErrorTypeProject,
-            expected:  false,
-        },
+			name:      "github error is retryable",
+			errorType: ErrorTypeGitHub,
+			expected:  true,
+		},
+		{
+			name:      "validation error is not retryable",
+			errorType: ErrorTypeValidation,
+			expected:  false,
+		},
+		{
+			name:      "project error is not retryable",
+			errorType: ErrorTypeProject,
+			expected:  false,
+		},
 	}
 
-	for _, tt range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := &WizardError{Type: tt.errorType}
-			retult := err.IsRetryable()
+			result := err.IsRetryable()
 			assert.Equal(t, tt.expected, result)
 		})
 	}

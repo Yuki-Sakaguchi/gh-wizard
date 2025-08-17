@@ -75,9 +75,9 @@ func TestProjectConfig_Validate(t *testing.T) {
 
 func TestProjectConfig_GetGitHubCreateCommand(t *testing.T) {
 	tests := []struct {
-		name   string
-		config ProjectConfig
-		want   string
+		name     string
+		config   ProjectConfig
+		expected []string
 	}{
 		{
 			name: "with template and private",
@@ -85,7 +85,7 @@ func TestProjectConfig_GetGitHubCreateCommand(t *testing.T) {
 				Name:        "test-project",
 				Description: "テストプロジェクト",
 				Template: &Template{
-					FullNam: "user/template-repo",
+					FullName: "user/template-repo",
 				},
 				IsPrivate: true,
 			},
@@ -143,7 +143,7 @@ func TestProjectConfig_GetDIsplaySummary(t *testing.T) {
 		Template:     template,
 		CreateGitHub: true,
 		IsPrivate:    true,
-		LoacalPath:   "./test-project",
+		LocalPath:    "./test-project",
 	}
 
 	summary := config.GetDisplaySummary()
