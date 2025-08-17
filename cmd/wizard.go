@@ -159,10 +159,13 @@ func (wr *WizardRunner) runInteractiveMode(templates []models.Template) (*models
 	flow := wizard.NewQuestionFlow(templates)
 	
 	// 対話的な質問を実行
-	config, err := flow.ExecuteQuestions()
+	config, err := flow.Execute()
 	if err != nil {
 		return nil, models.NewValidationError(fmt.Sprintf("質問の実行に失敗しました: %v", err))
 	}
+	
+	// LocalPathを設定
+	config.LocalPath = "./" + config.Name
 	
 	return config, nil
 }
