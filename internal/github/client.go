@@ -25,7 +25,25 @@ type DefaultClient struct {
 
 // NewClient は新しい GitHub クライアントを作成する
 func NewClient() Client {
-	return &DefaultClient()
+	return &DefaultClient{}
+}
+
+// GetUserTemplates はユーザーのテンプレートリポジトリを取得する
+func (c *DefaultClient) GetUserTemplates(ctx context.Context) ([]models.Template, error) {
+	// TODO: Issue #28で実装予定
+	return nil, nil
+}
+
+// CreateRepository は GitHub リポジトリを作成する
+func (c *DefaultClient) CreateRepository(ctx context.Context, config *models.ProjectConfig) error {
+	// TODO: Issue #28で実装予定
+	return nil
+}
+
+// CheckAuthentication は認証状態を確認する
+func (c *DefaultClient) CheckAuthentication(ctx context.Context) error {
+	// TODO: Issue #28で実装予定
+	return nil
 }
 
 // GetTemplateByFullName は完全名でテンプレートを検索する
@@ -34,9 +52,9 @@ func GetTemplateByFullName(templates []models.Template, fullName string) *models
 		return nil
 	}
 
-	for _, tempalate := range templates {
-		if tempalate.FullName == fullName {
-			return &tempalate
+	for _, template := range templates {
+		if template.FullName == fullName {
+			return &template
 		}
 	}
 	return nil
@@ -45,7 +63,7 @@ func GetTemplateByFullName(templates []models.Template, fullName string) *models
 // GetTemplateByDisplayName は表示名でテンプレートを検索する
 func GetTemplateByDisplayName(templates []models.Template, displayName string) *models.Template {
 	for _, template := range templates {
-		if template.GetDisplayName()() == displayName {
+		if template.GetDisplayName() == displayName {
 			return &template
 		}
 	}
