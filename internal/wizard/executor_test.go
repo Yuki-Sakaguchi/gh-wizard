@@ -82,6 +82,7 @@ func (suite *ExecutorTestSuite) TestCreateProjectWithTemplate() {
 		Name:      "from-template",
 		LocalPath: projectPath,
 		Template: &models.Template{
+			FullName: "test/template",
 			CloneURL: templateDir, // テスト用にローカルパス使用
 		},
 		CreateGitHub: false,

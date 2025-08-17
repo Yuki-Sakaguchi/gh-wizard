@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -76,5 +77,95 @@ func CheckGHVersion() error {
 		return fmt.Errorf("GitHub CLI のバージョン形式が不正です: %s", version)
 	}
 
+	return nil
+}
+
+// GitService はGit操作を管理するサービス
+type GitService struct {
+	workingDir string
+}
+
+// NewGitService は新しいGitServiceを作成する
+func NewGitService(workingDir string) *GitService {
+	return &GitService{
+		workingDir: workingDir,
+	}
+}
+
+// CheckGitInstallation はGitがインストールされているかチェックする
+func (gs *GitService) CheckGitInstallation() error {
+	return CheckGitInstalled()
+}
+
+// InitializeRepository はGitリポジトリを初期化する
+func (gs *GitService) InitializeRepository(ctx context.Context) error {
+	cmd := exec.CommandContext(ctx, "git", "init")
+	cmd.Dir = gs.workingDir
+	
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("gitリポジトリの初期化に失敗: %w", err)
+	}
+	
+	return nil
+}
+
+// AddAllFiles はすべてのファイルをステージングエリアに追加する
+func (gs *GitService) AddAllFiles(ctx context.Context) error {
+	cmd := exec.CommandContext(ctx, "git", "add", ".")
+	cmd.Dir = gs.workingDir
+	
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("ファイルの追加に失敗: %w", err)
+	}
+	
+	return nil
+}
+
+// CreateInitialCommit は初期コミットを作成する
+func (gs *GitService) CreateInitialCommit(ctx context.Context, message string) error {
+	cmd := exec.CommandContext(ctx, "git", "commit", "-m", message)
+	cmd.Dir = gs.workingDir
+	
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("初期コミットの作成に失敗: %w", err)
+	}
+	
+	return nil
+}
+
+// GetCurrentBranch は現在のブランチ名を取得する
+func (gs *GitService) GetCurrentBranch(ctx context.Context) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", "branch", "--show-current")
+	cmd.Dir = gs.workingDir
+	
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("現在のブランチの取得に失敗: %w", err)
+	}
+	
+	return strings.TrimSpace(string(output)), nil
+}
+
+// AddRemote はリモートリポジトリを追加する
+func (gs *GitService) AddRemote(ctx context.Context, name, url string) error {
+	cmd := exec.CommandContext(ctx, "git", "remote", "add", name, url)
+	cmd.Dir = gs.workingDir
+	
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("リモートリポジトリの追加に失敗: %w", err)
+	}
+	
+	return nil
+}
+
+// PushToRemote はリモートリポジトリにプッシュする
+func (gs *GitService) PushToRemote(ctx context.Context, remoteName, branchName string) error {
+	cmd := exec.CommandContext(ctx, "git", "push", "-u", remoteName, branchName)
+	cmd.Dir = gs.workingDir
+	
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("リモートリポジトリへのプッシュに失敗: %w", err)
+	}
+	
 	return nil
 }

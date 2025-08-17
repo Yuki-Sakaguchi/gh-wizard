@@ -82,6 +82,15 @@ func NewGitHubError(message string, cause error) *WizardError {
 	}
 }
 
+// NewProjectError はプロジェクトエラーを作成する
+func NewProjectError(message string, cause error) *WizardError {
+	return &WizardError{
+		Type:    ErrorTypeProject,
+		Message: message,
+		Cause:   cause,
+	}
+}
+
 // NewWizardError は新しい WizardError を作成する (legacy)
 func NewWizardError(code ErrorCode, message string, cause error) *WizardError {
 	var errorType ErrorType

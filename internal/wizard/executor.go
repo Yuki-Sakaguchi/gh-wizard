@@ -10,6 +10,7 @@ import (
 
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/github"
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
+	"github.com/Yuki-Sakaguchi/gh-wizard/internal/utils"
 )
 
 // ProjectExecutor はプロジェクト作成を実行する
@@ -145,4 +146,208 @@ func getCurrentUser() string {
 		return "unknown" // フォールバック
 	}
 	return strings.TrimSpace(string(output))
+}
+
+// cloneFromTemplate はテンプレートからプロジェクトを作成する
+func (pe *ProjectExecutor) cloneFromTemplate(ctx context.Context, config *models.ProjectConfig) error {
+	targetPath := config.GetLocalCreatePath()
+	
+	// GitHub CLI を使ってテンプレートから作成
+	repoURL := config.Template.CloneURL
+	if repoURL == "" {
+		repoURL = config.Template.GetRepoURL()
+	}
+	
+	cmd := exec.CommandContext(ctx, "gh", "repo", "create", config.Name, 
+		"--template", config.Template.FullName,
+		"--clone",
+		"--local",
+		"--destination", targetPath)
+		
+	if config.IsPrivate {
+		cmd.Args = append(cmd.Args, "--private")
+	} else {
+		cmd.Args = append(cmd.Args, "--public")
+	}
+	
+	if config.Description != "" {
+		cmd.Args = append(cmd.Args, "--description", config.Description)
+	}
+	
+	if err := cmd.Run(); err != nil {
+		// GitHub CLIが失敗した場合は、通常のgit cloneを試行
+		return pe.fallbackClone(ctx, config)
+	}
+	
+	return nil
+}
+
+// fallbackClone はGitHub CLIが失敗した場合のフォールバック
+func (pe *ProjectExecutor) fallbackClone(ctx context.Context, config *models.ProjectConfig) error {
+	targetPath := config.GetLocalCreatePath()
+	repoURL := config.Template.CloneURL
+	if repoURL == "" {
+		repoURL = config.Template.GetRepoURL()
+	}
+	
+	// ローカルディレクトリの場合はコピーを実行
+	if isLocalPath(repoURL) {
+		return pe.copyFromLocalTemplate(repoURL, targetPath)
+	}
+	
+	cmd := exec.CommandContext(ctx, "git", "clone", repoURL, targetPath)
+	if err := cmd.Run(); err != nil {
+		return models.NewProjectError(
+			fmt.Sprintf("テンプレートのクローンに失敗しました: %s", repoURL),
+			err,
+		)
+	}
+	
+	// .git ディレクトリを削除して新しいリポジトリとして初期化
+	gitDir := filepath.Join(targetPath, ".git")
+	if err := os.RemoveAll(gitDir); err != nil {
+		return models.NewProjectError("既存の.gitディレクトリの削除に失敗", err)
+	}
+	
+	// 新しいGitリポジトリとして初期化
+	return pe.initializeGitRepository(ctx, targetPath)
+}
+
+// isLocalPath はパスがローカルパスかどうかを判定する
+func isLocalPath(path string) bool {
+	return !strings.HasPrefix(path, "http://") && !strings.HasPrefix(path, "https://") && !strings.HasPrefix(path, "git@")
+}
+
+// copyFromLocalTemplate はローカルテンプレートからファイルをコピーする
+func (pe *ProjectExecutor) copyFromLocalTemplate(sourcePath, targetPath string) error {
+	// ターゲットディレクトリを作成
+	if err := os.MkdirAll(targetPath, 0755); err != nil {
+		return models.NewProjectError("ターゲットディレクトリの作成に失敗", err)
+	}
+	
+	// ソースディレクトリからターゲットディレクトリにファイルをコピー
+	if err := copyDir(sourcePath, targetPath); err != nil {
+		return models.NewProjectError("テンプレートファイルのコピーに失敗", err)
+	}
+	
+	// Gitリポジトリとして初期化
+	return pe.initializeGitRepository(context.Background(), targetPath)
+}
+
+// copyDir はディレクトリを再帰的にコピーする
+func copyDir(src, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		
+		// 相対パスを計算
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		
+		dstPath := filepath.Join(dst, relPath)
+		
+		if info.IsDir() {
+			// ディレクトリの場合は作成
+			return os.MkdirAll(dstPath, info.Mode())
+		} else {
+			// ファイルの場合はコピー
+			return copyFile(path, dstPath)
+		}
+	})
+}
+
+// copyFile はファイルをコピーする
+func copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+	
+	// ディレクトリが存在しない場合は作成
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return err
+	}
+	
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+	
+	_, err = srcFile.WriteTo(dstFile)
+	return err
+}
+
+// initializeGitRepository はGitリポジトリを初期化する
+func (pe *ProjectExecutor) initializeGitRepository(ctx context.Context, targetPath string) error {
+	gitService := utils.NewGitService(targetPath)
+	
+	// Git初期化
+	if err := gitService.InitializeRepository(ctx); err != nil {
+		return models.NewProjectError("Gitリポジトリの初期化に失敗", err)
+	}
+	
+	// 全ファイルを追加
+	if err := gitService.AddAllFiles(ctx); err != nil {
+		return models.NewProjectError("ファイルの追加に失敗", err)
+	}
+	
+	// 初期コミット
+	if err := gitService.CreateInitialCommit(ctx, "Initial commit"); err != nil {
+		return models.NewProjectError("初期コミットの作成に失敗", err)
+	}
+	
+	return nil
+}
+
+// createGitHubRepository はGitHubリポジトリを作成する
+func (pe *ProjectExecutor) createGitHubRepository(ctx context.Context, config *models.ProjectConfig) error {
+	// GitHub CLIを使ってリポジトリを作成
+	cmd := exec.CommandContext(ctx, "gh", "repo", "create", config.Name)
+	
+	if config.IsPrivate {
+		cmd.Args = append(cmd.Args, "--private")
+	} else {
+		cmd.Args = append(cmd.Args, "--public")
+	}
+	
+	if config.Description != "" {
+		cmd.Args = append(cmd.Args, "--description", config.Description)
+	}
+	
+	if err := cmd.Run(); err != nil {
+		return models.NewProjectError("GitHubリポジトリの作成に失敗", err)
+	}
+	
+	return nil
+}
+
+// pushToGitHub はローカルリポジトリをGitHubにプッシュする
+func (pe *ProjectExecutor) pushToGitHub(ctx context.Context, config *models.ProjectConfig) error {
+	targetPath := config.GetLocalCreatePath()
+	gitService := utils.NewGitService(targetPath)
+	
+	// リモートリポジトリを追加
+	repoURL := fmt.Sprintf("https://github.com/%s/%s.git", getCurrentUser(), config.Name)
+	if err := gitService.AddRemote(ctx, "origin", repoURL); err != nil {
+		return models.NewProjectError("リモートリポジトリの追加に失敗", err)
+	}
+	
+	// 現在のブランチを取得
+	branch, err := gitService.GetCurrentBranch(ctx)
+	if err != nil {
+		// ブランチが取得できない場合はデフォルトのmainを使用
+		branch = "main"
+	}
+	
+	// プッシュ
+	if err := gitService.PushToRemote(ctx, "origin", branch); err != nil {
+		return models.NewProjectError("GitHubへのプッシュに失敗", err)
+	}
+	
+	return nil
 }
