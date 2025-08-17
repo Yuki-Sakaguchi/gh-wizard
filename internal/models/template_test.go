@@ -1,4 +1,3 @@
-
 package models
 
 import (
@@ -9,15 +8,15 @@ import (
 
 func TestTemplate_GetDisplayName(t *testing.T) {
 	tests := []struct {
-		name string
+		name     string
 		template Template
 		expected string
 	}{
 		{
 			name: "complate information",
 			template: Template{
-				Name: "nextjs-starter",
-				Stars: 15,
+				Name:     "nextjs-starter",
+				Stars:    15,
 				Language: "TypeScript",
 			},
 			expected: "nextjs-starter (⭐ 15) [TypeScript]",
@@ -25,8 +24,8 @@ func TestTemplate_GetDisplayName(t *testing.T) {
 		{
 			name: "no stars",
 			template: Template{
-				Name: "simple-template",
-				Stars: 0,
+				Name:     "simple-template",
+				Stars:    0,
 				Language: "JavaScript",
 			},
 			expected: "simple-template [JavaScript]",
@@ -34,7 +33,7 @@ func TestTemplate_GetDisplayName(t *testing.T) {
 		{
 			name: "no language",
 			template: Template{
-				Name: "basic-template",
+				Name:  "basic-template",
 				Stars: 5,
 			},
 			expected: "basic-template (⭐ 5)",
@@ -58,24 +57,24 @@ func TestTemplate_GetDisplayName(t *testing.T) {
 
 func TestTemplate_GetShortDescription(t *testing.T) {
 	tests := []struct {
-		name string
+		name        string
 		description string
-		expected string
+		expected    string
 	}{
 		{
-			name: "normal description",
+			name:        "normal description",
 			description: "A simple template",
-			expected: "A simple template",
+			expected:    "A simple template",
 		},
 		{
-			name: "long description",
+			name:        "long description",
 			description: "This is a very long description that exceeds the maximum character limit and should be truncated",
-            expected:    "This is a very long description that exceeds the maximum character limit...",
+			expected:    "This is a very long description that exceeds the maximum character limit...",
 		},
 		{
-			name: "empty description",
+			name:        "empty description",
 			description: "",
-			expected: "説明なし",
+			expected:    "説明なし",
 		},
 	}
 
@@ -101,18 +100,18 @@ func TestTemplate_GetRepoURL(t *testing.T) {
 
 func TestTemlate_IsPublic(t *testing.T) {
 	tests := []struct {
-		name string
-		private bool
+		name     string
+		private  bool
 		expected bool
 	}{
 		{
-			name: "public repository",
-			private: false,
+			name:     "public repository",
+			private:  false,
 			expected: true,
 		},
 		{
-			name: "private repository",
-			private: true,
+			name:     "private repository",
+			private:  true,
 			expected: false,
 		},
 	}
