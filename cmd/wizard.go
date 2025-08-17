@@ -3,8 +3,11 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -260,9 +263,7 @@ func (wr *WizardRunner) createProject(ctx context.Context, config *models.Projec
 	// 3. テンプレートからファイルコピー（該当する場合）
 	if config.Template != nil {
 		fmt.Printf("📦 テンプレート '%s' を適用中...\n", config.Template.FullName)
-		// TODO: 実際のテンプレートコピー処理を実装
-		// 現時点では基本的なREADME.mdを作成
-		if err := wr.createBasicFiles(config); err != nil {
+		if err := wr.copyTemplateFiles(ctx, config); err != nil {
 			return err
 		}
 	} else {
@@ -281,6 +282,139 @@ func (wr *WizardRunner) createProject(ctx context.Context, config *models.Projec
 	}
 	
 	return nil
+}
+
+// copyTemplateFiles はテンプレートリポジトリからファイルをコピーする
+func (wr *WizardRunner) copyTemplateFiles(ctx context.Context, config *models.ProjectConfig) error {
+	// 一時ディレクトリを作成してテンプレートリポジトリをクローン
+	tempDir, err := os.MkdirTemp("", "gh-wizard-template-*")
+	if err != nil {
+		return models.NewValidationError(fmt.Sprintf("一時ディレクトリの作成に失敗しました: %v", err))
+	}
+	defer os.RemoveAll(tempDir) // クリーンアップ
+
+	// テンプレートリポジトリをクローン
+	cloneCmd := exec.CommandContext(ctx, "gh", "repo", "clone", config.Template.FullName, tempDir)
+	if err := cloneCmd.Run(); err != nil {
+		return models.NewGitHubError(fmt.Sprintf("テンプレートリポジトリのクローンに失敗しました: %v", err), err)
+	}
+
+	// .gitディレクトリを除外してファイルをコピー
+	if err := wr.copyDirectoryContents(tempDir, config.LocalPath, []string{".git"}); err != nil {
+		return models.NewValidationError(fmt.Sprintf("テンプレートファイルのコピーに失敗しました: %v", err))
+	}
+
+	// プロジェクト名とDescription を更新（README.mdが存在する場合）
+	if err := wr.updateTemplateVariables(config); err != nil {
+		// エラーが発生してもテンプレート適用は継続
+		fmt.Printf("⚠️  テンプレート変数の更新に失敗しました: %v\n", err)
+	}
+
+	return nil
+}
+
+// copyDirectoryContents はディレクトリの内容を別のディレクトリにコピーする（除外リスト対応）
+func (wr *WizardRunner) copyDirectoryContents(srcDir, dstDir string, excludeDirs []string) error {
+	return filepath.Walk(srcDir, func(srcPath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// 相対パスを取得
+		relPath, err := filepath.Rel(srcDir, srcPath)
+		if err != nil {
+			return err
+		}
+
+		// ルートディレクトリはスキップ
+		if relPath == "." {
+			return nil
+		}
+
+		// 除外ディレクトリのチェック
+		for _, excludeDir := range excludeDirs {
+			if strings.HasPrefix(relPath, excludeDir) {
+				if info.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+		}
+
+		dstPath := filepath.Join(dstDir, relPath)
+
+		if info.IsDir() {
+			// ディレクトリを作成
+			return os.MkdirAll(dstPath, info.Mode())
+		} else {
+			// ファイルをコピー
+			return wr.copyFile(srcPath, dstPath)
+		}
+	})
+}
+
+// copyFile はファイルをコピーする
+func (wr *WizardRunner) copyFile(srcPath, dstPath string) error {
+	// ディレクトリが存在しない場合は作成
+	if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+		return err
+	}
+
+	srcFile, err := os.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dstPath)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	return err
+}
+
+// updateTemplateVariables はテンプレート内の変数を更新する
+func (wr *WizardRunner) updateTemplateVariables(config *models.ProjectConfig) error {
+	readmePath := filepath.Join(config.LocalPath, "README.md")
+	
+	// README.mdが存在するかチェック
+	if _, err := os.Stat(readmePath); os.IsNotExist(err) {
+		// README.mdが存在しない場合は基本的なREADMEを作成
+		return wr.createBasicFiles(config)
+	}
+
+	// README.mdを読み取り
+	content, err := os.ReadFile(readmePath)
+	if err != nil {
+		return err
+	}
+
+	// テンプレート変数を置換（簡単な例）
+	contentStr := string(content)
+	
+	// 一般的なテンプレート変数を置換
+	replacements := map[string]string{
+		"{{PROJECT_NAME}}":    config.Name,
+		"{{project_name}}":    config.Name,
+		"{{DESCRIPTION}}":     config.Description,
+		"{{description}}":     config.Description,
+		"${PROJECT_NAME}":     config.Name,
+		"${project_name}":     config.Name,
+		"${DESCRIPTION}":      config.Description,
+		"${description}":      config.Description,
+	}
+
+	for placeholder, value := range replacements {
+		if value != "" { // 空の値の場合は置換しない
+			contentStr = strings.ReplaceAll(contentStr, placeholder, value)
+		}
+	}
+
+	// 更新された内容を書き戻し
+	return os.WriteFile(readmePath, []byte(contentStr), 0644)
 }
 
 // createBasicFiles は基本ファイルを作成
