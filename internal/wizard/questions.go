@@ -16,17 +16,31 @@ type Answers struct {
 	IsPrivate    bool   `survey:"isPrivate"`
 }
 
+// SurveyExecutor はsurvey実行のインターフェース
+type SurveyExecutor interface {
+	Ask(questions []*survey.Question, response interface{}) error
+}
+
+// DefaultSurveyExecutor はデフォルトのsurvey実行器
+type DefaultSurveyExecutor struct{}
+
+func (d *DefaultSurveyExecutor) Ask(questions []*survey.Question, response interface{}) error {
+	return survey.Ask(questions, response)
+}
+
 // QuestionFlow は質問フローを管理する構造体
 type QuestionFlow struct {
-	templates []models.Template
-	answers   *Answers
+	templates      []models.Template
+	answers        *Answers
+	surveyExecutor SurveyExecutor
 }
 
 // NewQuestionFlow は新しい質問フローを作成する
 func NewQuestionFlow(templates []models.Template) *QuestionFlow {
 	return &QuestionFlow{
-		templates: templates,
-		answers:   &Answers{},
+		templates:      templates,
+		answers:        &Answers{},
+		surveyExecutor: &DefaultSurveyExecutor{},
 	}
 }
 
@@ -86,9 +100,11 @@ func (qf *QuestionFlow) CreateQuestions() []*survey.Question {
 		{
 			Name: "template",
 			Prompt: &survey.Select{
-				Message:     "テンプレートを選択してください:",
-				Options:     templateOptions,
-				Description: "プロジェクトのベースとなるテンプレートを選択",
+				Message: "テンプレートを選択してください:",
+				Options: templateOptions,
+				Description: func(value string, index int) string {
+					return "プロジェクトのベースとなるテンプレートを選択"
+				},
 			},
 			Validate: survey.Required,
 		},
@@ -98,7 +114,7 @@ func (qf *QuestionFlow) CreateQuestions() []*survey.Question {
 				Message: "プロジェクト名:",
 				Help:    "英数字、ハイフン、アンダースコアが使用できます",
 			},
-			Validate: validateProjectName,
+			Validate: survey.Required,
 		},
 		{
 			Name: "description",
@@ -137,4 +153,41 @@ func (qf *QuestionFlow) CreateConditionalQuestions() []*survey.Question {
 	}
 
 	return questions
+}
+
+// Execute は質問フローを実行してProjectConfigを返す
+func (qf *QuestionFlow) Execute() (*models.ProjectConfig, error) {
+	// 基本的な質問を実行
+	questions := qf.CreateQuestions()
+	err := qf.surveyExecutor.Ask(questions, qf.answers)
+	if err != nil {
+		return nil, fmt.Errorf("基本質問の実行に失敗: %w", err)
+	}
+
+	// 条件付き質問を実行
+	conditionalQuestions := qf.CreateConditionalQuestions()
+	if len(conditionalQuestions) > 0 {
+		err = qf.surveyExecutor.Ask(conditionalQuestions, qf.answers)
+		if err != nil {
+			return nil, fmt.Errorf("条件付き質問の実行に失敗: %w", err)
+		}
+	}
+
+	// 回答をProjectConfigに変換
+	config := &models.ProjectConfig{
+		Name:         qf.answers.ProjectName,
+		Description:  qf.answers.Description,
+		CreateGitHub: qf.answers.CreateGitHub,
+		IsPrivate:    qf.answers.IsPrivate,
+	}
+
+	// テンプレートを検索
+	for _, template := range qf.templates {
+		if formatTemplateOption(template) == qf.answers.Template {
+			config.Template = &template
+			break
+		}
+	}
+
+	return config, nil
 }
