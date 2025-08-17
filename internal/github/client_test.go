@@ -87,7 +87,7 @@ func TestMockCilent_GetUserTemplates_ErrorScenarios(t *testing.T) {
 		},
 		{
 			name:          "authentication error",
-			mockError:     models.NewGitHubError("authentication", errors.New("401")),
+			mockError:     models.NewGitHubError("authentication failed", errors.New("401")),
 			expectedError: "authentication failed",
 		},
 		{

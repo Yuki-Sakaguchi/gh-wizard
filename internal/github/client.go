@@ -31,7 +31,8 @@ func NewClient() Client {
 // GetUserTemplates はユーザーのテンプレートリポジトリを取得する
 func (c *DefaultClient) GetUserTemplates(ctx context.Context) ([]models.Template, error) {
 	// TODO: Issue #28で実装予定
-	return nil, nil
+	// テスト用に空のスライスを返す
+	return []models.Template{}, nil
 }
 
 // CreateRepository は GitHub リポジトリを作成する
