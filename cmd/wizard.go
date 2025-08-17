@@ -51,16 +51,19 @@ func runWizard(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// 実際のテンプレート一覧を取得
-	fmt.Println("🔍 人気のテンプレートを検索中...")
+	// ユーザー自身のテンプレートリポジトリを取得
+	fmt.Println("🔍 あなたのテンプレートリポジトリを取得中...")
 	templates, templateErr := runner.githubClient.SearchPopularTemplates(ctx)
 	if templateErr != nil {
 		// テンプレート取得に失敗した場合はテンプレートなしで続行
-		fmt.Printf("⚠️  テンプレート検索に失敗しました: %v\n", templateErr)
+		fmt.Printf("⚠️  テンプレート取得に失敗しました: %v\n", templateErr)
 		fmt.Println("テンプレートなしで続行します。")
 		templates = []models.Template{}
+	} else if len(templates) == 0 {
+		fmt.Println("📭 テンプレートリポジトリが見つかりませんでした")
+		fmt.Println("💡 GitHubでリポジトリを「Template repository」として設定すると、ここに表示されます。")
 	} else {
-		fmt.Printf("✅ %d個のテンプレートを見つけました\n", len(templates))
+		fmt.Printf("✅ %d個のテンプレートリポジトリを見つけました\n", len(templates))
 	}
 
 	var config *models.ProjectConfig
