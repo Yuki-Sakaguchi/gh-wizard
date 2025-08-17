@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"time"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
+	"github.com/Yuki-Sakaguchi/gh-wizard/internal/wizard"
 )
 
 var (
@@ -104,8 +107,22 @@ type WizardRunner struct{}
 
 // checkPrerequisites は必要なコマンドが利用可能かチェック
 func (wr *WizardRunner) checkPrerequisites(ctx context.Context) error {
-	// TODO: 実際のコマンド存在チェックを実装
-	// exec.LookPath("git") および exec.LookPath("gh") をチェック
+	// gitコマンドの存在確認
+	if _, err := exec.LookPath("git"); err != nil {
+		return models.NewValidationError("gitコマンドが見つかりません。Gitをインストールしてください。")
+	}
+	
+	// GitHub CLIの存在確認
+	if _, err := exec.LookPath("gh"); err != nil {
+		return models.NewValidationError("GitHub CLI (gh) が見つかりません。https://cli.github.com/ からインストールしてください。")
+	}
+	
+	// GitHub CLIの認証状態確認
+	cmd := exec.CommandContext(ctx, "gh", "auth", "status")
+	if err := cmd.Run(); err != nil {
+		return models.NewValidationError("GitHub CLIにログインしていません。'gh auth login' を実行してください。")
+	}
+	
 	return nil
 }
 
@@ -138,12 +155,16 @@ func (wr *WizardRunner) runNonInteractiveMode(templates []models.Template, templ
 
 // runInteractiveMode は対話モードでの実行
 func (wr *WizardRunner) runInteractiveMode(templates []models.Template) (*models.ProjectConfig, error) {
-	// TODO: 実際の対話式インターフェースを実装
-	// survey パッケージを使用した対話的な入力処理
-	return &models.ProjectConfig{
-		Name:      "interactive-project",
-		LocalPath: "./interactive-project",
-	}, nil
+	// wizard パッケージの QuestionFlow を使用
+	flow := wizard.NewQuestionFlow(templates)
+	
+	// 対話的な質問を実行
+	config, err := flow.ExecuteQuestions()
+	if err != nil {
+		return nil, models.NewValidationError(fmt.Sprintf("質問の実行に失敗しました: %v", err))
+	}
+	
+	return config, nil
 }
 
 // handleError はエラーを適切にフォーマットして表示
@@ -189,18 +210,94 @@ func (wr *WizardRunner) printConfiguration(config *models.ProjectConfig) {
 
 // confirmConfiguration はユーザーに設定確認を求める
 func (wr *WizardRunner) confirmConfiguration() (bool, error) {
-	// TODO: 実際の確認処理を実装
-	// survey.Confirm を使用
-	return true, nil
+	confirm := false
+	prompt := &survey.Confirm{
+		Message: "この設定でプロジェクトを作成しますか？",
+		Default: false,
+	}
+	
+	err := survey.AskOne(prompt, &confirm)
+	return confirm, err
 }
 
 // createProject は実際のプロジェクト作成を実行
 func (wr *WizardRunner) createProject(ctx context.Context, config *models.ProjectConfig) error {
-	// TODO: 実際のプロジェクト作成ロジックを実装
+	fmt.Printf("🚀 プロジェクト '%s' を作成中...\n", config.Name)
+	
 	// 1. ローカルディレクトリ作成
+	if err := os.MkdirAll(config.LocalPath, 0755); err != nil {
+		return models.NewValidationError(fmt.Sprintf("ディレクトリの作成に失敗しました: %v", err))
+	}
+	
 	// 2. Git初期化
+	gitInit := exec.CommandContext(ctx, "git", "init")
+	gitInit.Dir = config.LocalPath
+	if err := gitInit.Run(); err != nil {
+		return models.NewValidationError(fmt.Sprintf("Git初期化に失敗しました: %v", err))
+	}
+	
 	// 3. テンプレートからファイルコピー（該当する場合）
+	if config.Template != nil {
+		fmt.Printf("📦 テンプレート '%s' を適用中...\n", config.Template.FullName)
+		// TODO: 実際のテンプレートコピー処理を実装
+		// 現時点では基本的なREADME.mdを作成
+		if err := wr.createBasicFiles(config); err != nil {
+			return err
+		}
+	} else {
+		// テンプレートなしの場合は基本ファイルのみ作成
+		if err := wr.createBasicFiles(config); err != nil {
+			return err
+		}
+	}
+	
 	// 4. GitHubリポジトリ作成（該当する場合）
-	// 5. リモート追加とpush
+	if config.CreateGitHub {
+		fmt.Printf("🐙 GitHubリポジトリを作成中...\n")
+		if err := wr.createGitHubRepository(ctx, config); err != nil {
+			return err
+		}
+	}
+	
+	return nil
+}
+
+// createBasicFiles は基本ファイルを作成
+func (wr *WizardRunner) createBasicFiles(config *models.ProjectConfig) error {
+	// README.md作成
+	readmeContent := fmt.Sprintf("# %s\n\n%s\n", config.Name, config.Description)
+	readmePath := fmt.Sprintf("%s/README.md", config.LocalPath)
+	
+	if err := os.WriteFile(readmePath, []byte(readmeContent), 0644); err != nil {
+		return models.NewValidationError(fmt.Sprintf("README.mdの作成に失敗しました: %v", err))
+	}
+	
+	return nil
+}
+
+// createGitHubRepository はGitHubリポジトリを作成
+func (wr *WizardRunner) createGitHubRepository(ctx context.Context, config *models.ProjectConfig) error {
+	args := []string{"repo", "create", config.Name}
+	
+	if config.Description != "" {
+		args = append(args, "--description", config.Description)
+	}
+	
+	if config.IsPrivate {
+		args = append(args, "--private")
+	} else {
+		args = append(args, "--public")
+	}
+	
+	// ローカルリポジトリとして設定
+	args = append(args, "--source", config.LocalPath)
+	
+	createCmd := exec.CommandContext(ctx, "gh", args...)
+	createCmd.Dir = config.LocalPath
+	
+	if err := createCmd.Run(); err != nil {
+		return models.NewGitHubError("GitHubリポジトリの作成に失敗しました", err)
+	}
+	
 	return nil
 }
