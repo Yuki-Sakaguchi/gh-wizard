@@ -214,6 +214,12 @@ func (wr *WizardRunner) handleError(err error) error {
 		return nil // エラーとして扱わない
 	}
 	
+	// Survey interruptエラー（Ctrl+C during questions）の場合も特別処理
+	if strings.Contains(err.Error(), "interrupt") {
+		fmt.Println("\n👋 処理を終了します...")
+		return nil // エラーとして扱わない
+	}
+	
 	if wizardErr, ok := err.(*models.WizardError); ok {
 		if wizardErr.IsRetryable() {
 			fmt.Fprintf(os.Stderr, "❌ エラー: %s\n💡 しばらく待ってから再実行してください\n", err.Error())
