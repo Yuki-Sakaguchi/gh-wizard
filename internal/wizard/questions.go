@@ -95,7 +95,7 @@ func (qf *QuestionFlow) CreateQuestions() []*survey.Question {
 		// テンプレートが0個の場合はスキップ
 		return []*survey.Question{}
 	}
-	
+
 	templateOptions := make([]string, len(qf.templates))
 	for i, t := range qf.templates {
 		templateOptions[i] = formatTemplateOption(t)
@@ -159,7 +159,7 @@ func (qf *QuestionFlow) CreateBasicQuestions() []*survey.Question {
 			Name: "createGitHub",
 			Prompt: &survey.Confirm{
 				Message: "GitHubにリポジトリを作成しますか？",
-				Default: true,
+				Default: false,
 				Help:    "Noの場合はローカルにのみプロジェクトが作成されます",
 			},
 		},
@@ -176,7 +176,7 @@ func (qf *QuestionFlow) Execute() (*models.ProjectConfig, error) {
 			return nil, fmt.Errorf("テンプレート選択の実行に失敗: %w", err)
 		}
 	}
-	
+
 	// プロジェクト基本情報の質問
 	basicQuestions := qf.CreateBasicQuestions()
 	err := qf.surveyExecutor.Ask(basicQuestions, qf.answers)
