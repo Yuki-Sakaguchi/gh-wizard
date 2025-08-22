@@ -6,8 +6,10 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -42,8 +44,21 @@ func init() {
 }
 
 func runWizard(cmd *cobra.Command, args []string) error {
+	// シグナルハンドリングのセットアップ
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
+	
+	// Ctrl+C (SIGINT) を捕捉するためのチャネル
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	
+	// Graceful shutdownのためのgoroutine
+	go func() {
+		<-sigChan
+		fmt.Println("\n\n👋 処理を終了します...")
+		cancel()
+		os.Exit(0)
+	}()
 
 	runner := NewWizardRunner()
 
@@ -193,6 +208,12 @@ func (wr *WizardRunner) runInteractiveMode(templates []models.Template) (*models
 
 // handleError はエラーを適切にフォーマットして表示
 func (wr *WizardRunner) handleError(err error) error {
+	// Contextキャンセル（Ctrl+C）の場合は特別処理
+	if err == context.Canceled {
+		fmt.Println("\n👋 処理を終了します...")
+		return nil // エラーとして扱わない
+	}
+	
 	if wizardErr, ok := err.(*models.WizardError); ok {
 		if wizardErr.IsRetryable() {
 			fmt.Fprintf(os.Stderr, "❌ エラー: %s\n💡 しばらく待ってから再実行してください\n", err.Error())
@@ -248,6 +269,13 @@ func (wr *WizardRunner) confirmConfiguration() (bool, error) {
 func (wr *WizardRunner) createProject(ctx context.Context, config *models.ProjectConfig) error {
 	fmt.Printf("🚀 プロジェクト '%s' を作成中...\n", config.Name)
 	
+	// Contextキャンセルチェック
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+	
 	// 1. ローカルディレクトリ作成
 	if err := os.MkdirAll(config.LocalPath, 0755); err != nil {
 		return models.NewValidationError(fmt.Sprintf("ディレクトリの作成に失敗しました: %v", err))
@@ -255,6 +283,13 @@ func (wr *WizardRunner) createProject(ctx context.Context, config *models.Projec
 	
 	// 2. テンプレートからファイルコピー（該当する場合）
 	if config.Template != nil {
+		// Contextキャンセルチェック
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		
 		fmt.Printf("📦 テンプレート '%s' を適用中...\n", config.Template.FullName)
 		if err := wr.copyTemplateFiles(ctx, config); err != nil {
 			return err
@@ -280,6 +315,13 @@ func (wr *WizardRunner) createProject(ctx context.Context, config *models.Projec
 	
 	// 4. GitHubリポジトリ作成（該当する場合）
 	if config.CreateGitHub {
+		// Contextキャンセルチェック
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		
 		fmt.Printf("🐙 GitHubリポジトリを作成中...\n")
 		if err := wr.createGitHubRepository(ctx, config); err != nil {
 			return err
