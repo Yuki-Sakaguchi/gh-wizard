@@ -450,7 +450,7 @@ func (wr *WizardRunner) createGitHubRepository(ctx context.Context, config *mode
 		return models.NewValidationError(fmt.Sprintf("初回コミットに失敗しました: %v", err))
 	}
 	
-	// GitHub リポジトリ作成 (--source ではなく現在のディレクトリから)
+	// 1. GitHubリポジトリを作成（プッシュなし）
 	args := []string{"repo", "create", config.Name}
 	
 	if config.Description != "" {
@@ -463,15 +463,44 @@ func (wr *WizardRunner) createGitHubRepository(ctx context.Context, config *mode
 		args = append(args, "--public")
 	}
 	
-	// --source を使わずに、現在のディレクトリから作成
-	args = append(args, "--push")
-	
 	createCmd := exec.CommandContext(ctx, "gh", args...)
 	createCmd.Dir = config.LocalPath
 	
 	if output, err := createCmd.CombinedOutput(); err != nil {
 		fmt.Printf("エラー出力: %s\n", string(output))
 		return models.NewGitHubError(fmt.Sprintf("GitHubリポジトリの作成に失敗しました: %s", string(output)), err)
+	}
+	
+	// 2. GitHubユーザー名を取得
+	userCmd := exec.CommandContext(ctx, "gh", "api", "user", "--jq", ".login")
+	userOutput, err := userCmd.Output()
+	if err != nil {
+		return models.NewValidationError(fmt.Sprintf("GitHubユーザー名の取得に失敗しました: %v", err))
+	}
+	username := strings.TrimSpace(string(userOutput))
+	
+	// 3. リモートリポジトリを追加
+	remoteCmd := exec.CommandContext(ctx, "git", "remote", "add", "origin", fmt.Sprintf("https://github.com/%s/%s.git", username, config.Name))
+	remoteCmd.Dir = config.LocalPath
+	if err := remoteCmd.Run(); err != nil {
+		return models.NewValidationError(fmt.Sprintf("リモートリポジトリの追加に失敗しました: %v", err))
+	}
+	
+	// 4. 現在のブランチ名を取得
+	branchCmd := exec.CommandContext(ctx, "git", "branch", "--show-current")
+	branchCmd.Dir = config.LocalPath
+	branchOutput, err := branchCmd.Output()
+	if err != nil {
+		return models.NewValidationError(fmt.Sprintf("現在のブランチ名の取得に失敗しました: %v", err))
+	}
+	currentBranch := strings.TrimSpace(string(branchOutput))
+	
+	// 5. 現在のブランチをプッシュ
+	pushCmd := exec.CommandContext(ctx, "git", "push", "-u", "origin", currentBranch)
+	pushCmd.Dir = config.LocalPath
+	if output, err := pushCmd.CombinedOutput(); err != nil {
+		fmt.Printf("プッシュエラー (%s): %s\n", currentBranch, string(output))
+		return models.NewGitHubError(fmt.Sprintf("リポジトリへのプッシュに失敗しました: %s", string(output)), err)
 	}
 	
 	return nil
