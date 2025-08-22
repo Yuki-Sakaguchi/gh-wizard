@@ -253,14 +253,7 @@ func (wr *WizardRunner) createProject(ctx context.Context, config *models.Projec
 		return models.NewValidationError(fmt.Sprintf("ディレクトリの作成に失敗しました: %v", err))
 	}
 	
-	// 2. Git初期化
-	gitInit := exec.CommandContext(ctx, "git", "init")
-	gitInit.Dir = config.LocalPath
-	if err := gitInit.Run(); err != nil {
-		return models.NewValidationError(fmt.Sprintf("Git初期化に失敗しました: %v", err))
-	}
-	
-	// 3. テンプレートからファイルコピー（該当する場合）
+	// 2. テンプレートからファイルコピー（該当する場合）
 	if config.Template != nil {
 		fmt.Printf("📦 テンプレート '%s' を適用中...\n", config.Template.FullName)
 		if err := wr.copyTemplateFiles(ctx, config); err != nil {
@@ -271,6 +264,18 @@ func (wr *WizardRunner) createProject(ctx context.Context, config *models.Projec
 		if err := wr.createBasicFiles(config); err != nil {
 			return err
 		}
+	}
+	
+	// 3. Git初期化（テンプレートの.gitを完全に削除してから）
+	gitDirPath := filepath.Join(config.LocalPath, ".git")
+	if err := os.RemoveAll(gitDirPath); err != nil {
+		fmt.Printf("⚠️  既存の.gitディレクトリの削除に失敗: %v\n", err)
+	}
+	
+	gitInit := exec.CommandContext(ctx, "git", "init")
+	gitInit.Dir = config.LocalPath
+	if err := gitInit.Run(); err != nil {
+		return models.NewValidationError(fmt.Sprintf("Git初期化に失敗しました: %v", err))
 	}
 	
 	// 4. GitHubリポジトリ作成（該当する場合）
@@ -432,6 +437,20 @@ func (wr *WizardRunner) createBasicFiles(config *models.ProjectConfig) error {
 
 // createGitHubRepository はGitHubリポジトリを作成
 func (wr *WizardRunner) createGitHubRepository(ctx context.Context, config *models.ProjectConfig) error {
+	// 初回コミットとファイル追加
+	addCmd := exec.CommandContext(ctx, "git", "add", ".")
+	addCmd.Dir = config.LocalPath
+	if err := addCmd.Run(); err != nil {
+		return models.NewValidationError(fmt.Sprintf("ファイルのステージングに失敗しました: %v", err))
+	}
+	
+	commitCmd := exec.CommandContext(ctx, "git", "commit", "-m", "Initial commit")
+	commitCmd.Dir = config.LocalPath
+	if err := commitCmd.Run(); err != nil {
+		return models.NewValidationError(fmt.Sprintf("初回コミットに失敗しました: %v", err))
+	}
+	
+	// GitHub リポジトリ作成 (--source ではなく現在のディレクトリから)
 	args := []string{"repo", "create", config.Name}
 	
 	if config.Description != "" {
@@ -444,14 +463,15 @@ func (wr *WizardRunner) createGitHubRepository(ctx context.Context, config *mode
 		args = append(args, "--public")
 	}
 	
-	// ローカルリポジトリとして設定
-	args = append(args, "--source", config.LocalPath)
+	// --source を使わずに、現在のディレクトリから作成
+	args = append(args, "--push")
 	
 	createCmd := exec.CommandContext(ctx, "gh", args...)
 	createCmd.Dir = config.LocalPath
 	
-	if err := createCmd.Run(); err != nil {
-		return models.NewGitHubError("GitHubリポジトリの作成に失敗しました", err)
+	if output, err := createCmd.CombinedOutput(); err != nil {
+		fmt.Printf("エラー出力: %s\n", string(output))
+		return models.NewGitHubError(fmt.Sprintf("GitHubリポジトリの作成に失敗しました: %s", string(output)), err)
 	}
 	
 	return nil
