@@ -11,24 +11,24 @@ type ProjectConfig struct {
 	LocalPath    string    `json:"local_path"`
 }
 
-// Validate は設定値の妥当性をチェックする
+// Validate checks the validity of configuration values
 func (pc *ProjectConfig) Validate() error {
 	if pc.Name == "" {
-		return fmt.Errorf("プロジェクト名は必須です")
+		return fmt.Errorf("project name is required")
 	}
 
 	if len(pc.Name) > 100 {
-		return fmt.Errorf("プロジェクト名は最大100文字までです")
+		return fmt.Errorf("project name must be at most 100 characters")
 	}
 
 	if len(pc.Description) > 500 {
-		return fmt.Errorf("説明は最大500文字までです")
+		return fmt.Errorf("description must be at most 500 characters")
 	}
 
 	return nil
 }
 
-// GetGitHubCreateCommand は gh repo create コマンドの引数を生成する
+// GetGitHubCreateCommand generates arguments for gh repo create command
 func (pc *ProjectConfig) GetGitHubCreateCommand() []string {
 	args := []string{"repo", "create", pc.Name}
 
@@ -51,7 +51,7 @@ func (pc *ProjectConfig) GetGitHubCreateCommand() []string {
 	return args
 }
 
-// GetLocalCreatePath はローカルの作成パスを返す
+// GetLocalCreatePath returns the local creation path
 func (pc *ProjectConfig) GetLocalCreatePath() string {
 	if pc.LocalPath != "" {
 		return pc.LocalPath
@@ -59,38 +59,38 @@ func (pc *ProjectConfig) GetLocalCreatePath() string {
 	return "./" + pc.Name
 }
 
-// HasTemplate はテンプレートが設定されているかを返す
+// HasTemplate returns whether a template is configured
 func (pc *ProjectConfig) HasTemplate() bool {
 	return pc.Template != nil
 }
 
-// GetDisplaySummary は設定内容の表示用サマリーを返す
+// GetDisplaySummary returns a display summary of configuration
 func (pc *ProjectConfig) GetDisplaySummary() []string {
 	summary := []string{
-		fmt.Sprintf("📦 プロジェクト名: %s", pc.Name),
+		fmt.Sprintf("📦 Project name: %s", pc.Name),
 	}
 
 	if pc.Description != "" {
-		summary = append(summary, fmt.Sprintf("📄 説明: %s", pc.Description))
+		summary = append(summary, fmt.Sprintf("📄 Description: %s", pc.Description))
 	}
 
 	if pc.Template != nil {
-		summary = append(summary, fmt.Sprintf("📚 テンプレート: %s", pc.Template.FullName))
+		summary = append(summary, fmt.Sprintf("📚 Template: %s", pc.Template.FullName))
 	} else {
-		summary = append(summary, "📚 テンプレート: なし")
+		summary = append(summary, "📚 Template: None")
 	}
 
 	if pc.CreateGitHub {
-		visibility := "🌐 パブリック"
+		visibility := "🌐 Public"
 		if pc.IsPrivate {
-			visibility = "🔒 プライベート"
+			visibility = "🔒 Private"
 		}
-		summary = append(summary, fmt.Sprintf("🐙 GitHub: 作成する (%s)", visibility))
+		summary = append(summary, fmt.Sprintf("🐙 GitHub: Create (%s)", visibility))
 	} else {
-		summary = append(summary, "🐙 GitHub: 作成しない")
+		summary = append(summary, "🐙 GitHub: Do not create")
 	}
 
-	summary = append(summary, fmt.Sprintf("📁 ローカルパス: %s", pc.GetLocalCreatePath()))
+	summary = append(summary, fmt.Sprintf("📁 Local path: %s", pc.GetLocalCreatePath()))
 
 	return summary
 }

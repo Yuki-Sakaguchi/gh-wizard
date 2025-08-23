@@ -7,7 +7,7 @@ import (
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
 )
 
-// Answers はSurveyの回答を格納する構造体
+// Answers stores Survey responses
 type Answers struct {
 	Template     string `survey:"template"`
 	ProjectName  string `survey:"projectName"`
@@ -16,26 +16,26 @@ type Answers struct {
 	IsPrivate    bool   `survey:"isPrivate"`
 }
 
-// SurveyExecutor はsurvey実行のインターフェース
+// SurveyExecutor interface for survey execution
 type SurveyExecutor interface {
 	Ask(questions []*survey.Question, response interface{}) error
 }
 
-// DefaultSurveyExecutor はデフォルトのsurvey実行器
+// DefaultSurveyExecutor is the default survey executor
 type DefaultSurveyExecutor struct{}
 
 func (d *DefaultSurveyExecutor) Ask(questions []*survey.Question, response interface{}) error {
 	return survey.Ask(questions, response)
 }
 
-// QuestionFlow は質問フローを管理する構造体
+// QuestionFlow manages question flow
 type QuestionFlow struct {
 	templates      []models.Template
 	answers        *Answers
 	surveyExecutor SurveyExecutor
 }
 
-// NewQuestionFlow は新しい質問フローを作成する
+// NewQuestionFlow creates a new question flow
 func NewQuestionFlow(templates []models.Template) *QuestionFlow {
 	return &QuestionFlow{
 		templates:      templates,
@@ -44,7 +44,7 @@ func NewQuestionFlow(templates []models.Template) *QuestionFlow {
 	}
 }
 
-// formatTemplateOption はテンプレート選択肢の表示形式を作成する
+// formatTemplateOption creates template option display format
 func formatTemplateOption(template models.Template) string {
 	stars := ""
 	if template.Stars > 0 {
@@ -59,9 +59,9 @@ func formatTemplateOption(template models.Template) string {
 	return fmt.Sprintf("%s%s%s", template.Name, stars, language)
 }
 
-// findSelectedTemplate は選択されたテンプレートを取得する
+// findSelectedTemplate retrieves the selected template
 func (qf *QuestionFlow) findSelectedTemplate() *models.Template {
-	// テンプレートが選択されていない場合はnil
+	// Return nil if no template is selected
 	if qf.answers.Template == "" {
 		return nil
 	}
@@ -74,7 +74,7 @@ func (qf *QuestionFlow) findSelectedTemplate() *models.Template {
 	return nil
 }
 
-// GetProjectConfig は回答からProjectConfigを生成する
+// GetProjectConfig generates ProjectConfig from answers
 func (qf *QuestionFlow) GetProjectConfig() *models.ProjectConfig {
 	template := qf.findSelectedTemplate()
 
@@ -88,11 +88,11 @@ func (qf *QuestionFlow) GetProjectConfig() *models.ProjectConfig {
 	}
 }
 
-// CreateQuestions はテンプレート情報を基に質問を生成する
+// CreateQuestions generates questions based on template information
 func (qf *QuestionFlow) CreateQuestions() []*survey.Question {
-	// テンプレート選択肢を生成（テンプレートなしオプションは除去）
+	// Generate template options (exclude no-template option)
 	if len(qf.templates) == 0 {
-		// テンプレートが0個の場合はスキップ
+		// Skip if no templates available
 		return []*survey.Question{}
 	}
 
@@ -105,10 +105,10 @@ func (qf *QuestionFlow) CreateQuestions() []*survey.Question {
 		{
 			Name: "template",
 			Prompt: &survey.Select{
-				Message: "テンプレートを選択してください:",
+				Message: "Please select a template:",
 				Options: templateOptions,
 				Description: func(value string, index int) string {
-					return "プロジェクトのベースとなるテンプレートを選択"
+					return "Select base template for your project"
 				},
 			},
 			Validate: survey.Required,
@@ -118,18 +118,18 @@ func (qf *QuestionFlow) CreateQuestions() []*survey.Question {
 	return questions
 }
 
-// CreateConditionalQuestions は条件付き質問を生成する
+// CreateConditionalQuestions generates conditional questions
 func (qf *QuestionFlow) CreateConditionalQuestions() []*survey.Question {
 	var questions []*survey.Question
 
-	// GitHubリポジトリ作成時のみ表示される質問
+	// Questions displayed only when creating GitHub repository
 	if qf.answers.CreateGitHub {
 		questions = append(questions, &survey.Question{
 			Name: "isPrivate",
 			Prompt: &survey.Confirm{
-				Message: "プライベートリポジトリにしますか？",
+				Message: "Create as private repository?",
 				Default: true,
-				Help:    "プライベート: あなたのみアクセス可能 / パブリック: 誰でもアクセス可能",
+				Help:    "Private: Only you can access / Public: Anyone can access",
 			},
 		})
 	}
@@ -137,63 +137,63 @@ func (qf *QuestionFlow) CreateConditionalQuestions() []*survey.Question {
 	return questions
 }
 
-// CreateBasicQuestions はプロジェクトの基本情報に関する質問を作成する
+// CreateBasicQuestions creates questions about project basic information
 func (qf *QuestionFlow) CreateBasicQuestions() []*survey.Question {
 	return []*survey.Question{
 		{
 			Name: "projectName",
 			Prompt: &survey.Input{
-				Message: "プロジェクト名を入力してください:",
-				Help:    "英数字、ハイフン、アンダースコアが使用できます",
+				Message: "Enter project name:",
+				Help:    "Alphanumeric characters, hyphens, and underscores are allowed",
 			},
 			Validate: survey.Required,
 		},
 		{
 			Name: "description",
 			Prompt: &survey.Input{
-				Message: "プロジェクトの説明を入力してください (任意):",
-				Help:    "プロジェクトの簡単な説明",
+				Message: "Enter project description (optional):",
+				Help:    "Brief description of the project",
 			},
 		},
 		{
 			Name: "createGitHub",
 			Prompt: &survey.Confirm{
-				Message: "GitHubにリポジトリを作成しますか？",
+				Message: "Create repository on GitHub?",
 				Default: false,
-				Help:    "Noの場合はローカルにのみプロジェクトが作成されます",
+				Help:    "If No, project will be created locally only",
 			},
 		},
 	}
 }
 
-// Execute は質問フローを実行してProjectConfigを返す
+// Execute runs the question flow and returns ProjectConfig
 func (qf *QuestionFlow) Execute() (*models.ProjectConfig, error) {
-	// テンプレート選択質問を実行（テンプレートが利用可能な場合のみ）
+	// Execute template selection questions (only if templates are available)
 	questions := qf.CreateQuestions()
 	if len(questions) > 0 {
 		err := qf.surveyExecutor.Ask(questions, qf.answers)
 		if err != nil {
-			return nil, fmt.Errorf("テンプレート選択の実行に失敗: %w", err)
+			return nil, fmt.Errorf("failed to execute template selection: %w", err)
 		}
 	}
 
-	// プロジェクト基本情報の質問
+	// Project basic information questions
 	basicQuestions := qf.CreateBasicQuestions()
 	err := qf.surveyExecutor.Ask(basicQuestions, qf.answers)
 	if err != nil {
-		return nil, fmt.Errorf("基本質問の実行に失敗: %w", err)
+		return nil, fmt.Errorf("failed to execute basic questions: %w", err)
 	}
 
-	// 条件付き質問を実行
+	// Execute conditional questions
 	conditionalQuestions := qf.CreateConditionalQuestions()
 	if len(conditionalQuestions) > 0 {
 		err = qf.surveyExecutor.Ask(conditionalQuestions, qf.answers)
 		if err != nil {
-			return nil, fmt.Errorf("条件付き質問の実行に失敗: %w", err)
+			return nil, fmt.Errorf("failed to execute conditional questions: %w", err)
 		}
 	}
 
-	// 回答をProjectConfigに変換
+	// Convert answers to ProjectConfig
 	config := &models.ProjectConfig{
 		Name:         qf.answers.ProjectName,
 		Description:  qf.answers.Description,
@@ -201,7 +201,7 @@ func (qf *QuestionFlow) Execute() (*models.ProjectConfig, error) {
 		IsPrivate:    qf.answers.IsPrivate,
 	}
 
-	// テンプレートを検索
+	// Search for template
 	for _, template := range qf.templates {
 		if formatTemplateOption(template) == qf.answers.Template {
 			config.Template = &template

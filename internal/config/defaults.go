@@ -1,6 +1,6 @@
 package config
 
-// GetDefault はデフォルト設定を返す
+// GetDefault returns default settings
 func GetDefault() *Config {
 	return &Config{
 		DefaultPrivate:   true,
@@ -12,23 +12,23 @@ func GetDefault() *Config {
 	}
 }
 
-// GetConfigTemplate は設定ファイルのテンプレートYAMLを返す
+// GetConfigTemplate returns configuration file template YAML
 func GetConfigTemplate() string {
-	return `# gh-wizard 設定ファイル
-# 詳細: https://github.com/Yuki-Sakaguchi/gh-wizard
+	return `# gh-wizard configuration file
+# Details: https://github.com/Yuki-Sakaguchi/gh-wizard
 
-# デフォルト設定
-default_private: true        # リポジトリをプライベートにするか
-default_clone: true          # 作成後にローカルにクローンするか
-default_add_readme: true     # READMEファイルを追加するか
+# Default settings
+default_private: true        # Make repositories private by default
+default_clone: true          # Clone locally after creation
+default_add_readme: true     # Add README file
 
-# キャッシュ設定
-cache_timeout_minutes: 30    # テンプレート一覧のキャッシュ時間（分）
+# Cache settings
+cache_timeout_minutes: 30    # Template list cache timeout (minutes)
 
-# UI設定
-theme: "default"             # テーマ: default, dark, light
+# UI settings
+theme: "default"             # Theme: default, dark, light
 
-# 最近使用したテンプレート（自動更新）
+# Recently used templates (auto-updated)
 recent_templates: []
 `
 }

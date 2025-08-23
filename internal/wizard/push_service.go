@@ -9,13 +9,13 @@ import (
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/utils"
 )
 
-// PushService はGitHubへのプッシュを管理する
+// PushService manages pushes to GitHub
 type PushService struct {
 	repoService *github.RepositoryService
 	gitService  *utils.GitService
 }
 
-// NewPushService は新しいプッシュサービスを作成する
+// NewPushService creates a new push service
 func NewPushService(projectPath string) (*PushService, error) {
 	repoService, err := github.NewRepositoryService()
 	if err != nil {
@@ -30,51 +30,51 @@ func NewPushService(projectPath string) (*PushService, error) {
 	}, nil
 }
 
-// PushToGitHub はローカルリポジトリをGitHubにプッシュする
+// PushToGitHub pushes local repository to GitHub
 func (ps *PushService) PushToGitHub(ctx context.Context, config *models.ProjectConfig) error {
 	if !config.CreateGitHub {
-		return nil // GitHubプッシュが不要
+		return nil // GitHub push not required
 	}
 
-	// GitHubリポジトリを作成
+	// Create GitHub repository
 	repoInfo, err := ps.repoService.CreateRepository(ctx, config)
 	if err != nil {
 		return err
 	}
 
 	if repoInfo == nil {
-		return nil // リポジトリ作成がスキップされた
+		return nil // Repository creation skipped
 	}
 
-	// Git初期化とコミット
+	// Initialize Git and commit
 	if err := ps.initializeLocalRepository(ctx, config); err != nil {
 		return err
 	}
 
-	// リモートリポジトリの設定とプッシュ
+	// Configure remote repository and push
 	if err := ps.pushToRemoteRepository(ctx, repoInfo); err != nil {
 		return err
 	}
 
-	// 成功メッセージ
-	fmt.Printf("✅ GitHubリポジトリが作成されました: %s\n", repoInfo.HTMLURL)
+	// Success message
+	fmt.Printf("✅ GitHub repository created: %s\n", repoInfo.HTMLURL)
 
 	return nil
 }
 
-// initializeLocalRepository はローカルリポジトリを初期化する
+// initializeLocalRepository initializes local repository
 func (ps *PushService) initializeLocalRepository(ctx context.Context, config *models.ProjectConfig) error {
-	// Gitリポジトリ初期化
+	// Initialize Git repository
 	if err := ps.gitService.InitializeRepository(ctx); err != nil {
 		return err
 	}
 
-	// ファイルを追加
+	// Add files
 	if err := ps.gitService.AddAllFiles(ctx); err != nil {
 		return err
 	}
 
-	// 初期コミット
+	// Create initial commit
 	commitMessage := fmt.Sprintf("Initial commit for %s", config.Name)
 	if config.HasTemplate() {
 		commitMessage = fmt.Sprintf("Initial commit from template %s", config.Template.FullName)
@@ -87,23 +87,23 @@ func (ps *PushService) initializeLocalRepository(ctx context.Context, config *mo
 	return nil
 }
 
-// pushToRemoteRepository はリモートリポジトリにプッシュする
+// pushToRemoteRepository pushes to remote repository
 func (ps *PushService) pushToRemoteRepository(ctx context.Context, repoInfo *github.RepositoryInfo) error {
-	// リモートリポジトリを追加
+	// Add remote repository
 	if err := ps.gitService.AddRemote(ctx, "origin", repoInfo.CloneURL); err != nil {
 		return err
 	}
 
-	// 現在のブランチを取得
+	// Get current branch
 	branch, err := ps.gitService.GetCurrentBranch(ctx)
 	if err != nil {
-		branch = "main" // デフォルト
+		branch = "main" // Default
 	}
 
-	// プッシュ実行
+	// Execute push
 	if err := ps.gitService.PushToRemote(ctx, "origin", branch); err != nil {
 		return models.NewGitHubError(
-			fmt.Sprintf("GitHubへのプッシュに失敗しました。リポジトリURL: %s", repoInfo.HTMLURL),
+			fmt.Sprintf("Failed to push to GitHub. Repository URL: %s", repoInfo.HTMLURL),
 			err,
 		)
 	}
@@ -111,7 +111,7 @@ func (ps *PushService) pushToRemoteRepository(ctx context.Context, repoInfo *git
 	return nil
 }
 
-// SetupGitConfiguration はGit設定をセットアップする
+// SetupGitConfiguration sets up Git configuration
 func (ps *PushService) SetupGitConfiguration(ctx context.Context, name, email string) error {
 	return ps.gitService.ConfigureUserInfo(ctx, name, email)
 }

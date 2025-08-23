@@ -47,7 +47,7 @@ func TestAnswers_ToProjectConfig(t *testing.T) {
 		{
 			name: "no template selected",
 			answers: Answers{
-				Template:     "テンプレートなし",
+				Template:     "No template",
 				ProjectName:  "empty-project",
 				Description:  "",
 				CreateGitHub: false,

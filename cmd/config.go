@@ -9,53 +9,53 @@ import (
 
 var configCmd = &cobra.Command{
 	Use:   "config",
-	Short: "設定を表示・編集",
-	Long:  "gh-wizard の設定を表示または編集します",
+	Short: "Display and edit configuration",
+	Long:  "Display or edit gh-wizard configuration settings",
 }
 
 var configShowCmd = &cobra.Command{
 	Use:   "show",
-	Short: "現在の設定を表示",
+	Short: "Show current configuration",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.Load()
 		if err != nil {
-			fmt.Printf("設定の読み込みエラー: %v\n", err)
+			fmt.Printf("Configuration load error: %v\n", err)
 			return
 		}
 
-		fmt.Println("🔧 gh-wizard 設定")
+		fmt.Println("🔧 gh-wizard Configuration")
 		fmt.Println("========================")
-		fmt.Printf("デフォルト可視性: %s\n", map[bool]string{true: "Private", false: "Public"}[cfg.DefaultPrivate])
-		fmt.Printf("デフォルトクローン: %s\n", map[bool]string{true: "有効", false: "無効"}[cfg.DefaultClone])
-		fmt.Printf("README自動追加: %s\n", map[bool]string{true: "有効", false: "無効"}[cfg.DefaultAddRemote])
-		fmt.Printf("キャッシュタイムアウト: %d 分\n", cfg.CacheTimeout)
-		fmt.Printf("テーマ: %s\n", cfg.Theme)
+		fmt.Printf("Default Visibility: %s\n", map[bool]string{true: "Private", false: "Public"}[cfg.DefaultPrivate])
+		fmt.Printf("Default Clone: %s\n", map[bool]string{true: "Enabled", false: "Disabled"}[cfg.DefaultClone])
+		fmt.Printf("Auto Add README: %s\n", map[bool]string{true: "Enabled", false: "Disabled"}[cfg.DefaultAddRemote])
+		fmt.Printf("Cache Timeout: %d minutes\n", cfg.CacheTimeout)
+		fmt.Printf("Theme: %s\n", cfg.Theme)
 
 		if len(cfg.RecentTemplates) > 0 {
-			fmt.Println("\n最近使用したテンプレート")
+			fmt.Println("\nRecent Templates")
 			for i, template := range cfg.RecentTemplates {
 				fmt.Printf("  %d. %s\n", i+1, template)
 			}
 		}
 
 		configPath, _ := config.GetConfigPath()
-		fmt.Printf("\n設定ファイル: %s\n", configPath)
+		fmt.Printf("\nConfiguration file: %s\n", configPath)
 	},
 }
 
 var configInitCmd = &cobra.Command{
 	Use:   "init",
-	Short: "設定ファイルを初期化",
+	Short: "Initialize configuration file",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg := config.GetDefault()
 		if err := cfg.Save(); err != nil {
-			fmt.Printf("設定ファイルの作成エラー: %v\n", err)
+			fmt.Printf("Configuration file creation error: %v\n", err)
 			return
 		}
 
 		configPath, _ := config.GetConfigPath()
-		fmt.Printf("✅ 設定ファイルを作成しました: %s\n", configPath)
-		fmt.Printf("設定を編集するには、上記ファイルを直接編集してください。")
+		fmt.Printf("✅ Configuration file created: %s\n", configPath)
+		fmt.Printf("To edit settings, please edit the above file directly.")
 	},
 }
 

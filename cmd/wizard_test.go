@@ -10,13 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
 )
 
-// WizardTestSuite は統合テストスイート
+// WizardTestSuite is integration test suite
 type WizardTestSuite struct {
 	suite.Suite
 	originalStdout *os.File
@@ -28,22 +28,22 @@ type WizardTestSuite struct {
 }
 
 func (suite *WizardTestSuite) SetupTest() {
-	// 標準出力をキャプチャするためのパイプを作成
+	// Create pipes to capture standard output
 	suite.originalStdout = os.Stdout
 	suite.originalStderr = os.Stderr
-	
+
 	suite.stdoutReader, suite.stdoutWriter, _ = os.Pipe()
 	suite.stderrReader, suite.stderrWriter, _ = os.Pipe()
-	
+
 	os.Stdout = suite.stdoutWriter
 	os.Stderr = suite.stderrWriter
 }
 
 func (suite *WizardTestSuite) TearDownTest() {
-	// 標準出力を復元
+	// Restore standard output
 	os.Stdout = suite.originalStdout
 	os.Stderr = suite.originalStderr
-	
+
 	suite.stdoutWriter.Close()
 	suite.stderrWriter.Close()
 	suite.stdoutReader.Close()
@@ -54,10 +54,10 @@ func (suite *WizardTestSuite) captureOutput() (string, string) {
 	// Writerを閉じる
 	suite.stdoutWriter.Close()
 	suite.stderrWriter.Close()
-	
+
 	stdoutBuf := new(bytes.Buffer)
 	stderrBuf := new(bytes.Buffer)
-	
+
 	// バッファサイズを制限してデッドロックを防ぐ
 	go func() {
 		io.Copy(stdoutBuf, suite.stdoutReader)
@@ -65,10 +65,10 @@ func (suite *WizardTestSuite) captureOutput() (string, string) {
 	go func() {
 		io.Copy(stderrBuf, suite.stderrReader)
 	}()
-	
+
 	// 少し待って出力を読み取る
 	time.Sleep(100 * time.Millisecond)
-	
+
 	return stdoutBuf.String(), stderrBuf.String()
 }
 
@@ -77,20 +77,20 @@ func TestWizardTestSuite(t *testing.T) {
 }
 
 func (suite *WizardTestSuite) TestWizardCommand_Help() {
-	// 実際のwizardCmdの基本チェック
+	// Basic check of the actual wizardCmd
 	assert.Equal(suite.T(), "wizard", wizardCmd.Use)
 	assert.Contains(suite.T(), wizardCmd.Long, "GitHub Repository Wizard")
-	assert.Contains(suite.T(), wizardCmd.Short, "対話式リポジトリ作成ウィザード")
-	
-	// フラグが正しく定義されているかチェック
+	assert.Contains(suite.T(), wizardCmd.Short, "Start interactive repository creation wizard")
+
+	// Check if flags are correctly defined
 	templateFlag := wizardCmd.Flags().Lookup("template")
 	require.NotNil(suite.T(), templateFlag)
 	assert.Equal(suite.T(), "t", templateFlag.Shorthand)
-	
+
 	nameFlag := wizardCmd.Flags().Lookup("name")
 	require.NotNil(suite.T(), nameFlag)
 	assert.Equal(suite.T(), "n", nameFlag.Shorthand)
-	
+
 	dryRunFlag := wizardCmd.Flags().Lookup("dry-run")
 	require.NotNil(suite.T(), dryRunFlag)
 }
@@ -125,7 +125,7 @@ func TestWizardRunner_CheckPrerequisites(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.skipGitCheck || tt.skipGHCheck {
-				t.Skip("環境依存のため統合テストでのみ実行")
+				t.Skip("Environment dependent, run only in integration tests")
 			}
 
 			runner := NewWizardRunner()
@@ -163,7 +163,7 @@ func TestWizardRunner_NonInteractiveMode(t *testing.T) {
 			templateFlag: "user/template",
 			nameFlag:     "",
 			expectError:  true,
-			errorMsg:     "--name フラグが必要",
+			errorMsg:     "--name flag is required",
 		},
 		{
 			name:         "no template specified",
@@ -176,7 +176,7 @@ func TestWizardRunner_NonInteractiveMode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := NewWizardRunner()
-			
+
 			// モックテンプレートを用意
 			templates := []models.Template{
 				{
@@ -196,7 +196,7 @@ func TestWizardRunner_NonInteractiveMode(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tt.nameFlag, config.Name)
-				
+
 				if tt.templateFlag == "none" || tt.templateFlag == "" {
 					assert.Nil(t, config.Template)
 				} else {
@@ -234,18 +234,18 @@ func TestWizardRunner_HandleError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := NewWizardRunner()
-			
+
 			// 標準エラーを文字列として直接キャプチャ
 			var capturedOutput bytes.Buffer
-			
+
 			// 元のos.Stderrを保存
 			oldStderr := os.Stderr
 			defer func() { os.Stderr = oldStderr }()
-			
+
 			// パイプを作成
 			r, w, _ := os.Pipe()
 			os.Stderr = w
-			
+
 			// 別のgoroutineで出力を読み取り
 			done := make(chan bool)
 			go func() {
@@ -262,14 +262,14 @@ func TestWizardRunner_HandleError(t *testing.T) {
 			os.Stderr = oldStderr
 
 			assert.Error(t, result)
-			
+
 			output := capturedOutput.String()
-			
+
 			// 基本的なエラーメッセージの存在確認
-			assert.Contains(t, output, "エラー:")
-			
+			assert.Contains(t, output, "Error:")
+
 			if tt.expectRetry {
-				assert.Contains(t, output, "しばらく待ってから再実行")
+				assert.Contains(t, output, "Please wait and try again later")
 			}
 		})
 	}
@@ -288,15 +288,15 @@ func TestWizardRunner_PrintConfiguration(t *testing.T) {
 
 	// 標準出力をキャプチャ
 	var capturedOutput bytes.Buffer
-	
+
 	// 元のos.Stdoutを保存
 	oldStdout := os.Stdout
 	defer func() { os.Stdout = oldStdout }()
-	
+
 	// パイプを作成
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-	
+
 	// 別のgoroutineで出力を読み取り
 	done := make(chan bool)
 	go func() {
@@ -315,19 +315,19 @@ func TestWizardRunner_PrintConfiguration(t *testing.T) {
 	output := capturedOutput.String()
 
 	// 設定内容が正しく表示されているかチェック
-	assert.Contains(t, output, "設定内容確認")
+	assert.Contains(t, output, "Configuration Review")
 	assert.Contains(t, output, "test-project")
 	assert.Contains(t, output, "Test description")
-	assert.Contains(t, output, "プライベート")
+	assert.Contains(t, output, "Private")
 }
 
 func TestWizardRunner_Performance(t *testing.T) {
 	if testing.Short() {
-		t.Skip("パフォーマンステストをスキップ")
+		t.Skip("Skipping performance test")
 	}
 
 	runner := NewWizardRunner()
-	
+
 	// モックデータの準備
 	templates := make([]models.Template, 100) // 大量のテンプレート
 	for i := 0; i < 100; i++ {
@@ -339,14 +339,14 @@ func TestWizardRunner_Performance(t *testing.T) {
 	}
 
 	start := time.Now()
-	
+
 	config, err := runner.runNonInteractiveMode(templates, "none", "perf-test")
-	
+
 	elapsed := time.Since(start)
-	
+
 	require.NoError(t, err)
 	assert.NotNil(t, config)
-	
+
 	// パフォーマンス要件: 1秒以内で完了
 	assert.Less(t, elapsed, time.Second, "Non-interactive mode should complete within 1 second")
 }
