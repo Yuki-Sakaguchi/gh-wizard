@@ -24,6 +24,7 @@ var (
 	nameFlag     string
 	dryRunFlag   bool
 	yesFlag      bool
+	classicUIFlag bool
 )
 
 var wizardCmd = &cobra.Command{
@@ -41,6 +42,7 @@ func init() {
 	wizardCmd.Flags().StringVarP(&nameFlag, "name", "n", "", "Project name (for non-interactive mode)")
 	wizardCmd.Flags().BoolVar(&dryRunFlag, "dry-run", false, "Show configuration only without actual creation")
 	wizardCmd.Flags().BoolVarP(&yesFlag, "yes", "y", false, "Skip all confirmations")
+	wizardCmd.Flags().BoolVar(&classicUIFlag, "classic-ui", false, "Use classic multi-question UI instead of create-next-app style")
 }
 
 func runWizard(cmd *cobra.Command, args []string) error {
@@ -194,8 +196,18 @@ func (wr *WizardRunner) runInteractiveMode(templates []models.Template) (*models
 	// Use QuestionFlow from wizard package
 	flow := wizard.NewQuestionFlow(templates)
 
-	// Execute interactive questions
-	config, err := flow.Execute()
+	// Execute interactive questions with appropriate UI style
+	var config *models.ProjectConfig
+	var err error
+	
+	if classicUIFlag {
+		// Use classic multi-question UI
+		config, err = flow.Execute()
+	} else {
+		// Use create-next-app style UI (default)
+		config, err = flow.ExecuteCreateNextAppStyle()
+	}
+	
 	if err != nil {
 		return nil, models.NewValidationError(fmt.Sprintf("Failed to execute questions: %v", err))
 	}

@@ -1,6 +1,7 @@
 package wizard
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -407,4 +408,18 @@ func TestCalculatePromptWidth(t *testing.T) {
 	width := calculatePromptWidth()
 	// "? Please select a template: " is 28 characters + 5 margin = 33
 	assert.Equal(t, 33, width)
+}
+
+func TestClearPreviousLines(t *testing.T) {
+	// Test that clearPreviousLines doesn't panic with different line counts
+	testCases := []int{0, 1, 2, 5, 10}
+	
+	for _, lineCount := range testCases {
+		t.Run(fmt.Sprintf("lineCount_%d", lineCount), func(t *testing.T) {
+			// Should not panic
+			assert.NotPanics(t, func() {
+				clearPreviousLines(lineCount)
+			})
+		})
+	}
 }
