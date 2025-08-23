@@ -74,7 +74,7 @@ func TestTemplate_GetShortDescription(t *testing.T) {
 		{
 			name:        "empty description",
 			description: "",
-			expected:    "説明なし",
+			expected:    "No description",
 		},
 	}
 

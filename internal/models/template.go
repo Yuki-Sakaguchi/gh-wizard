@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Template は GitHub のテンプレートリポジトリの情報を表す
+// Template represents GitHub template repository information
 type Template struct {
 	ID          string    `json:"id"`
 	Name        string    `json:"name"`
@@ -22,27 +22,27 @@ type Template struct {
 	CloneURL    string    `json:"clone_url"`
 }
 
-// GetDisplayName はテンプレートリポジトリの表示名を返す
+// GetDisplayName returns the display name of template repository
 func (t Template) GetDisplayName() string {
 	result := t.Name
-	
-	// Stars情報を追加
+
+	// Add Stars information
 	if t.Stars > 0 {
 		result += fmt.Sprintf(" (⭐ %d)", t.Stars)
 	}
-	
-	// 言語情報を追加
+
+	// Add language information
 	if t.Language != "" {
 		result += fmt.Sprintf(" [%s]", t.Language)
 	}
-	
+
 	return result
 }
 
-// GetShortDescription は短縮された説明を返す
+// GetShortDescription returns shortened description
 func (t Template) GetShortDescription() string {
 	if t.Description == "" {
-		return "説明なし"
+		return "No description"
 	}
 	if len(t.Description) > 72 {
 		return t.Description[:72] + "..."
@@ -50,12 +50,12 @@ func (t Template) GetShortDescription() string {
 	return t.Description
 }
 
-// GetRepoURL はリポジトリのURLを返す
+// GetRepoURL returns repository URL
 func (t Template) GetRepoURL() string {
 	return "https://github.com/" + t.FullName
 }
 
-// GetIsPublic はパブリックリポジトリかどうかを返す
+// GetIsPublic returns whether the repository is public
 func (t Template) GetIsPublic() bool {
 	return !t.Private
 }

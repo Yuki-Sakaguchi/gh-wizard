@@ -41,13 +41,13 @@ func (suite *ValidatorTestSuite) TestValidateBasicRules() {
 		{"境界値_100文字", strings.Repeat("a", 100), false, ""},
 
 		// 無効なケース - 基本ルール
-		{"空文字", "", true, "必須"},
-		{"スペースのみ", "   ", true, "必須"},
-		{"長すぎる", strings.Repeat("a", 101), true, "100文字以内"},
-		{"無効な文字_スペース", "my project", true, "英数字"},
-		{"無効な文字_日本語", "プロジェクト", true, "英数字"},
-		{"無効な文字_特殊記号", "project@#$", true, "英数字"},
-		{"無効な文字_絵文字", "project🧙‍♂️", true, "英数字"},
+		{"空文字", "", true, "required"},
+		{"スペースのみ", "   ", true, "required"},
+		{"長すぎる", strings.Repeat("a", 101), true, "at most 100 characters"},
+		{"無効な文字_スペース", "my project", true, "invalid characters"},
+		{"無効な文字_日本語", "プロジェクト", true, "invalid characters"},
+		{"無効な文字_特殊記号", "project@#$", true, "invalid characters"},
+		{"無効な文字_絵文字", "project🧙‍♂️", true, "invalid characters"},
 	}
 
 	for _, tt := range tests {
@@ -79,15 +79,15 @@ func (suite *ValidatorTestSuite) TestValidateGitHubRules() {
 		{"文字で終了", "project123", false, ""},
 
 		// 無効なケース - GitHub規則
-		{"先頭ピリオド", ".project", true, "ピリオドで始まる"},
-		{"末尾ピリオド", "project.", true, "ピリオドで終わる"},
-		{"連続ピリオド", "my..project", true, "連続するピリオド"},
-		{"連続ハイフン", "my--project", true, "連続するハイフン"},
-		{"連続アンダースコア", "my__project", true, "連続するアンダースコア"},
-		{"先頭ハイフン", "-project", true, "ハイフンで始まる"},
-		{"末尾ハイフン", "project-", true, "ハイフンで終わる"},
-		{"先頭アンダースコア", "_project", true, "アンダースコアで始まる"},
-		{"末尾アンダースコア", "project_", true, "アンダースコアで終わる"},
+		{"先頭ピリオド", ".project", true, "cannot start with a period"},
+		{"末尾ピリオド", "project.", true, "cannot end with a period"},
+		{"連続ピリオド", "my..project", true, "consecutive periods"},
+		{"連続ハイフン", "my--project", true, "consecutive hyphens"},
+		{"連続アンダースコア", "my__project", true, "consecutive underscores"},
+		{"先頭ハイフン", "-project", true, "cannot start with a hyphen"},
+		{"末尾ハイフン", "project-", true, "cannot end with a hyphen"},
+		{"先頭アンダースコア", "_project", true, "cannot start with an underscore"},
+		{"末尾アンダースコア", "project_", true, "cannot end with an underscore"},
 	}
 
 	for _, tt := range tests {
@@ -144,7 +144,7 @@ func (suite *ValidatorTestSuite) TestValidateReservedNames() {
 
 			if tt.wantErr {
 				suite.Error(err)
-				suite.Contains(err.Error(), "予約名")
+				suite.Contains(err.Error(), "reserved name")
 			} else {
 				suite.NoError(err)
 			}
@@ -174,10 +174,10 @@ func (suite *ValidatorTestSuite) TestValidateAdvancedRules() {
 		{"数字と文字の混合", "project123", false, ""},
 
 		// 無効なケース - 高度なルール
-		{"全て数字", "12345", true, "数字のみ"},
-		{"特殊文字過多", "a.b-c_d.e-f_g", true, "特殊文字"},
-		{"制御文字", "project\n", true, "制御文字"},
-		{"制御文字_タブ", "project\t", true, "制御文字"},
+		{"全て数字", "12345", true, "all-numeric"},
+		{"特殊文字過多", "a.b-c_d.e-f_g", true, "too many special characters"},
+		{"制御文字", "project\n", true, "control characters"},
+		{"制御文字_タブ", "project\t", true, "control characters"},
 	}
 
 	for _, tt := range tests {
@@ -297,10 +297,10 @@ func TestValidateDescription(t *testing.T) {
 		{"改行入り_5行", "line1\nline2\nline3\nline4\nline5", false, ""},
 
 		// 無効なケース
-		{"非文字列型", 123, true, "無効な入力タイプ"},
-		{"長すぎる", strings.Repeat("a", 501), true, "500文字以内"},
-		{"改行過多", strings.Repeat("line\n", 6), true, "5行以内"},
-		{"制御文字", "description\x00", true, "制御文字"},
+		{"非文字列型", 123, true, "invalid input type"},
+		{"長すぎる", strings.Repeat("a", 501), true, "at most 500 characters"},
+		{"改行過多", strings.Repeat("line\n", 6), true, "at most 5 lines"},
+		{"制御文字", "description\x00", true, "control characters"},
 	}
 
 	for _, tt := range tests {
@@ -353,12 +353,12 @@ func TestTemplateValidator_ValidateTemplateSelection(t *testing.T) {
 	}{
 		// 有効なケース
 		{"有効なテンプレート", "valid-template (⭐ 10) [Go]", false, ""},
-		{"テンプレートなし", "テンプレートなし", false, ""},
+		{"テンプレートなし", "No template", false, ""},
 
 		// 無効なケース
-		{"空の選択", "", true, "選択してください"},
-		{"存在しないテンプレート", "nonexistent-template", true, "利用できません"},
-		{"テンプレートでないリポジトリ", "not-template", true, "テンプレートとして設定されていません"},
+		{"空の選択", "", true, "please select"},
+		{"存在しないテンプレート", "nonexistent-template", true, "not available"},
+		{"テンプレートでないリポジトリ", "not-template", true, "not configured as a template"},
 	}
 
 	for _, tt := range tests {
@@ -389,13 +389,13 @@ func TestTemplateValidator_GetSurveyValidator(t *testing.T) {
 	require.NotNil(t, surveyValidator)
 
 	// 有効な選択のテスト
-	err := surveyValidator("テンプレートなし")
+	err := surveyValidator("No template")
 	assert.NoError(t, err)
 
 	// 無効な型のテスト
 	err = surveyValidator(123)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "無効な入力タイプ")
+	assert.Contains(t, err.Error(), "invalid input type")
 }
 
 func TestConfigValidator_ValidateProjectConfig(t *testing.T) {
@@ -446,7 +446,7 @@ func TestConfigValidator_ValidateProjectConfig(t *testing.T) {
 				Name: "",
 			},
 			wantErr: true,
-			errType: "プロジェクト名",
+			errType: "project name",
 		},
 		{
 			name: "無効_テンプレート",
@@ -458,7 +458,7 @@ func TestConfigValidator_ValidateProjectConfig(t *testing.T) {
 				},
 			},
 			wantErr: true,
-			errType: "テンプレート",
+			errType: "template",
 		},
 		{
 			name: "無効_ローカルパス",
@@ -467,7 +467,7 @@ func TestConfigValidator_ValidateProjectConfig(t *testing.T) {
 				LocalPath: "../invalid/path",
 			},
 			wantErr: true,
-			errType: "相対パス",
+			errType: "relative path",
 		},
 	}
 

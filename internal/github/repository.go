@@ -11,17 +11,17 @@ import (
 	"github.com/cli/go-gh/v2/pkg/api"
 )
 
-// RepositoryService はGitHubリポジトリ操作を提供する
+// RepositoryService provides GitHub repository operations
 type RepositoryService struct {
 	client *api.RESTClient
 }
 
-// NewRepositoryService は新しいリポジトリサービスを作成する
+// NewRepositoryService creates a new repository service
 func NewRepositoryService() (*RepositoryService, error) {
 	client, err := api.DefaultRESTClient()
 	if err != nil {
 		return nil, models.NewGitHubError(
-			"GitHub CLI の初期化に失敗しました",
+			"Failed to initialize GitHub CLI",
 			err,
 		)
 	}
@@ -29,24 +29,24 @@ func NewRepositoryService() (*RepositoryService, error) {
 	return &RepositoryService{client: client}, nil
 }
 
-// CreateRepository はGitHubリポジトリを作成する
+// CreateRepository creates a GitHub repository
 func (rs *RepositoryService) CreateRepository(ctx context.Context, config *models.ProjectConfig) (*RepositoryInfo, error) {
 	if !config.CreateGitHub {
-		return nil, nil // GitHubリポジトリ作成が不要
+		return nil, nil // GitHub repository creation not required
 	}
 
-	// 現在のユーザー情報を取得
+	// Get current user information
 	user, err := rs.getCurrentUser(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// リポジトリの重複チェック
+	// Check for repository duplication
 	if err := rs.checkRepositoryExists(ctx, user.Login, config.Name); err != nil {
 		return nil, err
 	}
 
-	// リポジトリ作成
+	// Create repository
 	repoInfo, err := rs.createRepositoryViaAPI(ctx, config)
 	if err != nil {
 		return nil, err
@@ -55,65 +55,65 @@ func (rs *RepositoryService) CreateRepository(ctx context.Context, config *model
 	return repoInfo, nil
 }
 
-// getCurrentUser は現在のGitHubユーザー情報を取得する
+// getCurrentUser gets current GitHub user information
 func (rs *RepositoryService) getCurrentUser(ctx context.Context) (*GitHubUser, error) {
 	var user GitHubUser
 	err := rs.client.Get("user", &user)
 	if err != nil {
 		return nil, models.NewGitHubError(
-			"ユーザー情報の取得に失敗しました",
+			"Failed to get user information",
 			err,
 		)
 	}
 	return &user, nil
 }
 
-// checkRepositoryExists はリポジトリの重複をチェックする
+// checkRepositoryExists checks for repository duplication
 func (rs *RepositoryService) checkRepositoryExists(ctx context.Context, owner, name string) error {
 	var repo RepositoryInfo
 	err := rs.client.Get(fmt.Sprintf("repos/%s/%s", owner, name), &repo)
 
 	if err == nil {
-		// リポジトリが存在する
+		// Repository exists
 		return models.NewGitHubError(
-			fmt.Sprintf("リポジトリ '%s/%s' は既に存在します", owner, name),
+			fmt.Sprintf("Repository '%s/%s' already exists", owner, name),
 			nil,
 		)
 	}
 
-	// 404エラーの場合は正常（リポジトリが存在しない）
+	// 404 error is normal (repository doesn't exist)
 	if strings.Contains(err.Error(), "404") {
 		return nil
 	}
 
-	// その他のエラー
+	// Other errors
 	return models.NewGitHubError(
-		"リポジトリの存在確認に失敗しました",
+		"Failed to check repository existence",
 		err,
 	)
 }
 
-// createRepositoryViaAPI はAPI経由でリポジトリを作成する
+// createRepositoryViaAPI creates repository via API
 func (rs *RepositoryService) createRepositoryViaAPI(ctx context.Context, config *models.ProjectConfig) (*RepositoryInfo, error) {
-	// リクエストボディの作成
+	// Create request body
 	createReq := CreateRepositoryRequest{
 		Name:        config.Name,
 		Description: config.Description,
 		Private:     config.IsPrivate,
-		AutoInit:    false, // テンプレートまたはローカルで初期化済み
+		AutoInit:    false, // Already initialized by template or locally
 	}
 
-	// テンプレートリポジトリの場合
+	// For template repository
 	if config.HasTemplate() {
 		createReq.TemplateOwner = config.Template.Owner
 		createReq.TemplateRepo = config.Template.Name
 	}
 
-	// リクエストボディをJSONに変換
+	// Convert request body to JSON
 	jsonData, err := json.Marshal(createReq)
 	if err != nil {
 		return nil, models.NewGitHubError(
-			"リクエストデータの作成に失敗しました",
+			"Failed to create request data",
 			err,
 		)
 	}
@@ -122,7 +122,7 @@ func (rs *RepositoryService) createRepositoryViaAPI(ctx context.Context, config 
 	err = rs.client.Post("user/repos", bytes.NewReader(jsonData), &repoInfo)
 	if err != nil {
 		return nil, models.NewGitHubError(
-			fmt.Sprintf("リポジトリの作成に失敗しました: %v", err),
+			fmt.Sprintf("Failed to create repository: %v", err),
 			err,
 		)
 	}
@@ -130,16 +130,16 @@ func (rs *RepositoryService) createRepositoryViaAPI(ctx context.Context, config 
 	return &repoInfo, nil
 }
 
-// データ構造
+// Data structures
 
-// GitHubUser はGitHubユーザー情報を表す
+// GitHubUser represents GitHub user information
 type GitHubUser struct {
 	Login string `json:"login"`
 	ID    int    `json:"id"`
 	Email string `json:"email"`
 }
 
-// RepositoryInfo はリポジトリ情報を表す
+// RepositoryInfo represents repository information
 type RepositoryInfo struct {
 	ID        int        `json:"id"`
 	Name      string     `json:"name"`
@@ -153,7 +153,7 @@ type RepositoryInfo struct {
 	CreatedAt string     `json:"created_at"`
 }
 
-// CreateRepositoryRequest はリポジトリ作成リクエストを表す
+// CreateRepositoryRequest represents repository creation request
 type CreateRepositoryRequest struct {
 	Name          string `json:"name"`
 	Description   string `json:"description,omitempty"`

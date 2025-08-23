@@ -116,7 +116,7 @@ func (suite *ExecutorTestSuite) TestCreateProject_DirectoryExists() {
 
 	// ディレクトリが既に存在する場合はエラーになるはず
 	assert.Error(suite.T(), err)
-	assert.Contains(suite.T(), err.Error(), "既に存在")
+	assert.Contains(suite.T(), err.Error(), "already exists")
 }
 
 func TestProjectExecutor_Execute_LocalOnly(t *testing.T) {

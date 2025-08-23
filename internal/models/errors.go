@@ -2,7 +2,7 @@ package models
 
 import "fmt"
 
-// ErrorType はエラーの種類を表す
+// ErrorType represents the type of error
 type ErrorType string
 
 const (
@@ -16,30 +16,30 @@ const (
 type ErrorCode string
 
 const (
-	// システムエラー
+	// System errors
 	ErrGHNotInstalled     ErrorCode = "GH_NOT_INSTALLED"
 	ErrGHNotAuthenticated ErrorCode = "GH_NOT_AUTHENTICATED"
 	ErrAPIRateLimit       ErrorCode = "API_RATE_LIMIT"
 	ErrNetworkError       ErrorCode = "NETWORK_ERROR"
 
-	// ユーザーエラー
+	// User errors
 	ErrInvalidRepoName   ErrorCode = "INVALID_REPO_NAME"
 	ErrRepoAlreadyExists ErrorCode = "REPO_ALREADY_EXISTS"
 	ErrNoTemplatesFound  ErrorCode = "NO_TEMPLATES_FOUND"
 
-	// アプリケーションエラー
+	// Application errors
 	ErrConfigLoadFailed ErrorCode = "CONFIG_LOAD_FAILED"
 	ErrTUIInitFailed    ErrorCode = "TUI_INIT_FAILED"
 )
 
-// WizardError は gh-wizard 固有のエラーを表す
+// WizardError represents gh-wizard specific errors
 type WizardError struct {
 	Type    ErrorType
 	Message string
 	Cause   error
 }
 
-// Error は error インターフェースを満たす
+// Error satisfies the error interface
 func (we *WizardError) Error() string {
 	if we.Cause != nil {
 		return fmt.Sprintf("[%s] %s: %s", we.Type, we.Message, we.Cause.Error())
@@ -47,12 +47,12 @@ func (we *WizardError) Error() string {
 	return fmt.Sprintf("[%s] %s", we.Type, we.Message)
 }
 
-// Unwrap は原因となったエラーを返す
+// Unwrap returns the underlying error
 func (we *WizardError) Unwrap() error {
 	return we.Cause
 }
 
-// IsRetryable はリトライ可能なエラーかどうかを返す
+// IsRetryable returns whether the error is retryable
 func (we *WizardError) IsRetryable() bool {
 	switch we.Type {
 	case ErrorTypeNetwork, ErrorTypeGitHub:
@@ -64,7 +64,7 @@ func (we *WizardError) IsRetryable() bool {
 	}
 }
 
-// NewValidationError はバリデーションエラーを作成する
+// NewValidationError creates a validation error
 func NewValidationError(message string) *WizardError {
 	return &WizardError{
 		Type:    ErrorTypeValidation,
@@ -73,7 +73,7 @@ func NewValidationError(message string) *WizardError {
 	}
 }
 
-// NewGitHubError はGitHubエラーを作成する
+// NewGitHubError creates a GitHub error
 func NewGitHubError(message string, cause error) *WizardError {
 	return &WizardError{
 		Type:    ErrorTypeGitHub,
@@ -82,7 +82,7 @@ func NewGitHubError(message string, cause error) *WizardError {
 	}
 }
 
-// NewProjectError はプロジェクトエラーを作成する
+// NewProjectError creates a project error
 func NewProjectError(message string, cause error) *WizardError {
 	return &WizardError{
 		Type:    ErrorTypeProject,
@@ -91,7 +91,7 @@ func NewProjectError(message string, cause error) *WizardError {
 	}
 }
 
-// NewWizardError は新しい WizardError を作成する (legacy)
+// NewWizardError creates a new WizardError (legacy)
 func NewWizardError(code ErrorCode, message string, cause error) *WizardError {
 	var errorType ErrorType
 	switch code {
@@ -104,7 +104,7 @@ func NewWizardError(code ErrorCode, message string, cause error) *WizardError {
 	default:
 		errorType = ErrorTypeProject
 	}
-	
+
 	return &WizardError{
 		Type:    errorType,
 		Message: message,

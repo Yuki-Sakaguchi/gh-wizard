@@ -29,7 +29,7 @@ func TestProjectConfig_Validate(t *testing.T) {
 				Name: "",
 			},
 			wantErr: true,
-			errMsg:  "プロジェクト名は必須です",
+			errMsg:  "project name is required",
 		},
 		{
 			name: "name too long",
@@ -37,7 +37,7 @@ func TestProjectConfig_Validate(t *testing.T) {
 				Name: strings.Repeat("a", 101), // 101文字
 			},
 			wantErr: true,
-			errMsg:  "プロジェクト名は最大100文字までです",
+			errMsg:  "project name must be at most 100 characters",
 		},
 		{
 			name: "description too long",
@@ -46,7 +46,7 @@ func TestProjectConfig_Validate(t *testing.T) {
 				Description: strings.Repeat("a", 501), // 501文字
 			},
 			wantErr: true,
-			errMsg:  "説明は最大500文字までです",
+			errMsg:  "description must be at most 500 characters",
 		},
 		{
 			name: "validate edge case",
@@ -152,7 +152,7 @@ func TestProjectConfig_GetDIsplaySummary(t *testing.T) {
 	assert.Contains(t, summary[0], "test-project")
 	assert.Contains(t, summary[1], "テストプロジェクト")
 	assert.Contains(t, summary[2], "user/awesome-template")
-	assert.Contains(t, summary[3], "プライベート")
+	assert.Contains(t, summary[3], "Private")
 	assert.Contains(t, summary[4], "./test-project")
 }
 

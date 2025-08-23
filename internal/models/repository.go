@@ -2,7 +2,7 @@ package models
 
 import "errors"
 
-// Repository は GitHub のリポジトリ作成時の設定を表す
+// Repository represents GitHub repository creation settings
 type RepositoryConfig struct {
 	Name        string
 	Description string
@@ -11,18 +11,18 @@ type RepositoryConfig struct {
 	AddReadme   bool
 }
 
-// Validate は設定値の妥当性をチェックする
+// Validate checks the validity of configuration values
 func (rc RepositoryConfig) Validate() error {
 	if rc.Name == "" {
-		return errors.New("リポジトリ名は必須です")
+		return errors.New("repository name is required")
 	}
 	if len(rc.Name) > 100 {
-		return errors.New("リポジトリ名は100文字以内にしてください")
+		return errors.New("repository name must be at most 100 characters")
 	}
 	return nil
 }
 
-// GetGHCommand は gh repo create のコマンドを生成する
+// GetGHCommand generates gh repo create command
 func (rc RepositoryConfig) GetGHCommand(template *Template) []string {
 	args := []string{"repo", "create", rc.Name}
 

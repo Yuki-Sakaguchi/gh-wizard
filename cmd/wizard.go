@@ -13,10 +13,10 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/spf13/cobra"
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/github"
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/wizard"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -28,71 +28,71 @@ var (
 
 var wizardCmd = &cobra.Command{
 	Use:   "wizard",
-	Short: "対話式リポジトリ作成ウィザードを開始",
-	Long:  "🔮 GitHub Repository Wizard\n\n魔法のように簡単で直感的なGitHubリポジトリ作成ウィザード",
+	Short: "Start interactive repository creation wizard",
+	Long:  "🔮 GitHub Repository Wizard\n\nMagically simple and intuitive GitHub repository creation wizard",
 	RunE:  runWizard,
 }
 
 func init() {
 	rootCmd.AddCommand(wizardCmd)
-	
-	// フラグの定義
-	wizardCmd.Flags().StringVarP(&templateFlag, "template", "t", "", "使用するテンプレート (例: user/repo または 'none')")
-	wizardCmd.Flags().StringVarP(&nameFlag, "name", "n", "", "プロジェクト名 (非対話モード用)")
-	wizardCmd.Flags().BoolVar(&dryRunFlag, "dry-run", false, "実際の作成は行わず、設定のみ表示")
-	wizardCmd.Flags().BoolVarP(&yesFlag, "yes", "y", false, "全ての確認をスキップ")
+
+	// Flag definitions
+	wizardCmd.Flags().StringVarP(&templateFlag, "template", "t", "", "Template to use (e.g. user/repo or 'none')")
+	wizardCmd.Flags().StringVarP(&nameFlag, "name", "n", "", "Project name (for non-interactive mode)")
+	wizardCmd.Flags().BoolVar(&dryRunFlag, "dry-run", false, "Show configuration only without actual creation")
+	wizardCmd.Flags().BoolVarP(&yesFlag, "yes", "y", false, "Skip all confirmations")
 }
 
 func runWizard(cmd *cobra.Command, args []string) error {
-	// シグナルハンドリングのセットアップ
+	// Setup signal handling
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	
-	// Ctrl+C (SIGINT) を捕捉するためのチャネル
+
+	// Channel to capture Ctrl+C (SIGINT)
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	
-	// Graceful shutdownのためのgoroutine
+
+	// Goroutine for graceful shutdown
 	go func() {
 		<-sigChan
-		fmt.Println("\n\n👋 処理を終了します...")
+		fmt.Println("\n\n👋 Exiting...")
 		cancel()
 		os.Exit(0)
 	}()
 
 	runner := NewWizardRunner()
 
-	// 前提条件チェック
+	// Check prerequisites
 	if !dryRunFlag {
 		if err := runner.checkPrerequisites(ctx); err != nil {
 			return runner.handleError(err)
 		}
 	}
 
-	// ユーザー自身のテンプレートリポジトリを取得
-	fmt.Println("🔍 あなたのテンプレートリポジトリを取得中...")
+	// Fetch user's template repositories
+	fmt.Println("🔍 Fetching your template repositories...")
 	templates, templateErr := runner.githubClient.SearchPopularTemplates(ctx)
 	if templateErr != nil {
-		// テンプレート取得に失敗した場合はテンプレートなしで続行
-		fmt.Printf("⚠️  テンプレート取得に失敗しました: %v\n", templateErr)
-		fmt.Println("テンプレートなしで続行します。")
+		// Continue without templates if fetching fails
+		fmt.Printf("⚠️  Failed to fetch templates: %v\n", templateErr)
+		fmt.Println("Continuing without templates.")
 		templates = []models.Template{}
 	} else if len(templates) == 0 {
-		fmt.Println("📭 テンプレートリポジトリが見つかりませんでした")
-		fmt.Println("💡 GitHubでリポジトリを「Template repository」として設定すると、ここに表示されます。")
+		fmt.Println("📭 No template repositories found")
+		fmt.Println("💡 Set repositories as 'Template repository' on GitHub to display them here.")
 	} else {
-		fmt.Printf("✅ %d個のテンプレートリポジトリを見つけました\n", len(templates))
+		fmt.Printf("✅ Found %d template repositories\n", len(templates))
 	}
 
 	var config *models.ProjectConfig
 	var err error
 
-	// ノンインタラクティブモードまたは対話モード
+	// Non-interactive mode or interactive mode
 	if nameFlag != "" || templateFlag != "" {
-		// ノンインタラクティブモード
+		// Non-interactive mode
 		config, err = runner.runNonInteractiveMode(templates, templateFlag, nameFlag)
 	} else {
-		// 対話モード
+		// Interactive mode
 		config, err = runner.runInteractiveMode(templates)
 	}
 
@@ -100,72 +100,72 @@ func runWizard(cmd *cobra.Command, args []string) error {
 		return runner.handleError(err)
 	}
 
-	// 設定表示
+	// Display configuration
 	runner.printConfiguration(config)
 
 	if dryRunFlag {
-		fmt.Println("🔍 ドライランモード: 実際の作成は行いません")
+		fmt.Println("🔍 Dry run mode: No actual creation will be performed")
 		return nil
 	}
 
-	// 確認
+	// Confirmation
 	if !yesFlag {
 		confirmed, err := runner.confirmConfiguration()
 		if err != nil {
 			return runner.handleError(err)
 		}
 		if !confirmed {
-			fmt.Println("⏹️  キャンセルされました")
+			fmt.Println("⏹️  Cancelled")
 			return nil
 		}
 	}
 
-	// プロジェクト作成実行
+	// Execute project creation
 	if err := runner.createProject(ctx, config); err != nil {
 		return runner.handleError(err)
 	}
 
-	fmt.Println("✨ プロジェクトが正常に作成されました！")
+	fmt.Println("✨ Project successfully created!")
 	return nil
 }
 
-// WizardRunner はウィザードの実行を管理する構造体
+// WizardRunner manages wizard execution
 type WizardRunner struct {
 	githubClient github.Client
 }
 
-// NewWizardRunner は新しいWizardRunnerを作成する
+// NewWizardRunner creates a new WizardRunner
 func NewWizardRunner() *WizardRunner {
 	return &WizardRunner{
 		githubClient: github.NewClient(),
 	}
 }
 
-// checkPrerequisites は必要なコマンドが利用可能かチェック
+// checkPrerequisites checks if required commands are available
 func (wr *WizardRunner) checkPrerequisites(ctx context.Context) error {
-	// gitコマンドの存在確認
+	// Check git command availability
 	if _, err := exec.LookPath("git"); err != nil {
-		return models.NewValidationError("gitコマンドが見つかりません。Gitをインストールしてください。")
+		return models.NewValidationError("Git command not found. Please install Git.")
 	}
-	
-	// GitHub CLIの存在確認
+
+	// Check GitHub CLI availability
 	if _, err := exec.LookPath("gh"); err != nil {
-		return models.NewValidationError("GitHub CLI (gh) が見つかりません。https://cli.github.com/ からインストールしてください。")
+		return models.NewValidationError("GitHub CLI (gh) not found. Please install from https://cli.github.com/.")
 	}
-	
-	// GitHub CLIの認証状態確認
+
+	// Check GitHub CLI authentication status
 	cmd := exec.CommandContext(ctx, "gh", "auth", "status")
 	if err := cmd.Run(); err != nil {
-		return models.NewValidationError("GitHub CLIにログインしていません。'gh auth login' を実行してください。")
+		return models.NewValidationError("Not logged in to GitHub CLI. Please run 'gh auth login'.")
 	}
-	
+
 	return nil
 }
 
-// runNonInteractiveMode は非対話モードでの実行
+// runNonInteractiveMode runs in non-interactive mode
 func (wr *WizardRunner) runNonInteractiveMode(templates []models.Template, templateFlag, nameFlag string) (*models.ProjectConfig, error) {
 	if nameFlag == "" {
-		return nil, models.NewValidationError("--name フラグが必要です")
+		return nil, models.NewValidationError("--name flag is required")
 	}
 
 	config := &models.ProjectConfig{
@@ -173,7 +173,7 @@ func (wr *WizardRunner) runNonInteractiveMode(templates []models.Template, templ
 		LocalPath: "./" + nameFlag,
 	}
 
-	// テンプレート指定があれば設定
+	// Set template if specified
 	if templateFlag != "" && templateFlag != "none" {
 		for _, tmpl := range templates {
 			if tmpl.FullName == templateFlag || tmpl.Name == templateFlag {
@@ -182,209 +182,209 @@ func (wr *WizardRunner) runNonInteractiveMode(templates []models.Template, templ
 			}
 		}
 		if config.Template == nil {
-			return nil, models.NewValidationError(fmt.Sprintf("指定されたテンプレート '%s' が見つかりません", templateFlag))
+			return nil, models.NewValidationError(fmt.Sprintf("Specified template '%s' not found", templateFlag))
 		}
 	}
 
 	return config, nil
 }
 
-// runInteractiveMode は対話モードでの実行
+// runInteractiveMode runs in interactive mode
 func (wr *WizardRunner) runInteractiveMode(templates []models.Template) (*models.ProjectConfig, error) {
-	// wizard パッケージの QuestionFlow を使用
+	// Use QuestionFlow from wizard package
 	flow := wizard.NewQuestionFlow(templates)
-	
-	// 対話的な質問を実行
+
+	// Execute interactive questions
 	config, err := flow.Execute()
 	if err != nil {
-		return nil, models.NewValidationError(fmt.Sprintf("質問の実行に失敗しました: %v", err))
+		return nil, models.NewValidationError(fmt.Sprintf("Failed to execute questions: %v", err))
 	}
-	
-	// LocalPathを設定
+
+	// Set LocalPath
 	config.LocalPath = "./" + config.Name
-	
+
 	return config, nil
 }
 
-// handleError はエラーを適切にフォーマットして表示
+// handleError formats and displays errors appropriately
 func (wr *WizardRunner) handleError(err error) error {
-	// Contextキャンセル（Ctrl+C）の場合は特別処理
+	// Special handling for Context cancellation (Ctrl+C)
 	if err == context.Canceled {
-		fmt.Println("\n👋 処理を終了します...")
-		return nil // エラーとして扱わない
+		fmt.Println("\n👋 Exiting...")
+		return nil // Don't treat as error
 	}
-	
-	// Survey interruptエラー（Ctrl+C during questions）の場合も特別処理
+
+	// Special handling for Survey interrupt error (Ctrl+C during questions)
 	if strings.Contains(err.Error(), "interrupt") {
-		fmt.Println("\n👋 処理を終了します...")
-		return nil // エラーとして扱わない
+		fmt.Println("\n👋 Exiting...")
+		return nil // Don't treat as error
 	}
-	
+
 	if wizardErr, ok := err.(*models.WizardError); ok {
 		if wizardErr.IsRetryable() {
-			fmt.Fprintf(os.Stderr, "❌ エラー: %s\n💡 しばらく待ってから再実行してください\n", err.Error())
+			fmt.Fprintf(os.Stderr, "❌ Error: %s\n💡 Please wait and try again later\n", err.Error())
 		} else {
-			fmt.Fprintf(os.Stderr, "❌ エラー: %s\n", err.Error())
+			fmt.Fprintf(os.Stderr, "❌ Error: %s\n", err.Error())
 		}
 		return err
 	}
-	
-	fmt.Fprintf(os.Stderr, "❌ エラー: %s\n", err.Error())
+
+	fmt.Fprintf(os.Stderr, "❌ Error: %s\n", err.Error())
 	return err
 }
 
-// printConfiguration は設定内容を表示
+// printConfiguration displays configuration details
 func (wr *WizardRunner) printConfiguration(config *models.ProjectConfig) {
-	fmt.Println("📋 設定内容確認")
-	fmt.Printf("📝 プロジェクト名: %s\n", config.Name)
-	
+	fmt.Println("📋 Configuration Review")
+	fmt.Printf("📝 Project Name: %s\n", config.Name)
+
 	if config.Description != "" {
-		fmt.Printf("📖 説明: %s\n", config.Description)
+		fmt.Printf("📖 Description: %s\n", config.Description)
 	}
-	
+
 	if config.Template != nil {
-		fmt.Printf("📦 テンプレート: %s (%d⭐)\n", config.Template.FullName, config.Template.Stars)
+		fmt.Printf("📦 Template: %s (%d⭐)\n", config.Template.FullName, config.Template.Stars)
 	} else {
-		fmt.Println("📦 テンプレート: なし")
+		fmt.Println("📦 Template: None")
 	}
-	
-	fmt.Printf("📁 ローカルパス: %s\n", config.LocalPath)
-	
+
+	fmt.Printf("📁 Local Path: %s\n", config.LocalPath)
+
 	if config.CreateGitHub {
 		if config.IsPrivate {
-			fmt.Println("👁️  可視性: プライベート")
+			fmt.Println("👁️  Visibility: Private")
 		} else {
-			fmt.Println("👁️  可視性: パブリック")
+			fmt.Println("👁️  Visibility: Public")
 		}
 	}
 }
 
-// confirmConfiguration はユーザーに設定確認を求める
+// confirmConfiguration asks user to confirm configuration
 func (wr *WizardRunner) confirmConfiguration() (bool, error) {
 	confirm := false
 	prompt := &survey.Confirm{
-		Message: "この設定でプロジェクトを作成しますか？",
+		Message: "Create project with this configuration?",
 		Default: false,
 	}
-	
+
 	err := survey.AskOne(prompt, &confirm)
 	return confirm, err
 }
 
-// createProject は実際のプロジェクト作成を実行
+// createProject executes the actual project creation
 func (wr *WizardRunner) createProject(ctx context.Context, config *models.ProjectConfig) error {
-	fmt.Printf("🚀 プロジェクト '%s' を作成中...\n", config.Name)
-	
-	// Contextキャンセルチェック
+	fmt.Printf("🚀 Creating project '%s'...\n", config.Name)
+
+	// Check for context cancellation
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
 	}
-	
-	// 1. ローカルディレクトリ作成
+
+	// 1. Create local directory
 	if err := os.MkdirAll(config.LocalPath, 0755); err != nil {
-		return models.NewValidationError(fmt.Sprintf("ディレクトリの作成に失敗しました: %v", err))
+		return models.NewValidationError(fmt.Sprintf("Failed to create directory: %v", err))
 	}
-	
-	// 2. テンプレートからファイルコピー（該当する場合）
+
+	// 2. Copy files from template (if applicable)
 	if config.Template != nil {
-		// Contextキャンセルチェック
+		// Check for context cancellation
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
 		}
-		
-		fmt.Printf("📦 テンプレート '%s' を適用中...\n", config.Template.FullName)
+
+		fmt.Printf("📦 Applying template '%s'...\n", config.Template.FullName)
 		if err := wr.copyTemplateFiles(ctx, config); err != nil {
 			return err
 		}
 	} else {
-		// テンプレートなしの場合は基本ファイルのみ作成
+		// Create basic files only if no template
 		if err := wr.createBasicFiles(config); err != nil {
 			return err
 		}
 	}
-	
-	// 3. Git初期化（テンプレートの.gitを完全に削除してから）
+
+	// 3. Git initialization (completely remove template's .git first)
 	gitDirPath := filepath.Join(config.LocalPath, ".git")
 	if err := os.RemoveAll(gitDirPath); err != nil {
-		fmt.Printf("⚠️  既存の.gitディレクトリの削除に失敗: %v\n", err)
+		fmt.Printf("⚠️  Failed to remove existing .git directory: %v\n", err)
 	}
-	
+
 	gitInit := exec.CommandContext(ctx, "git", "init")
 	gitInit.Dir = config.LocalPath
 	if err := gitInit.Run(); err != nil {
-		return models.NewValidationError(fmt.Sprintf("Git初期化に失敗しました: %v", err))
+		return models.NewValidationError(fmt.Sprintf("Failed to initialize Git: %v", err))
 	}
-	
-	// 4. GitHubリポジトリ作成（該当する場合）
+
+	// 4. Create GitHub repository (if applicable)
 	if config.CreateGitHub {
-		// Contextキャンセルチェック
+		// Check for context cancellation
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
 		}
-		
-		fmt.Printf("🐙 GitHubリポジトリを作成中...\n")
+
+		fmt.Printf("🐙 Creating GitHub repository...\n")
 		if err := wr.createGitHubRepository(ctx, config); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
-// copyTemplateFiles はテンプレートリポジトリからファイルをコピーする
+// copyTemplateFiles copies files from template repository
 func (wr *WizardRunner) copyTemplateFiles(ctx context.Context, config *models.ProjectConfig) error {
-	// 一時ディレクトリを作成してテンプレートリポジトリをクローン
+	// Create temporary directory and clone template repository
 	tempDir, err := os.MkdirTemp("", "gh-wizard-template-*")
 	if err != nil {
-		return models.NewValidationError(fmt.Sprintf("一時ディレクトリの作成に失敗しました: %v", err))
+		return models.NewValidationError(fmt.Sprintf("Failed to create temporary directory: %v", err))
 	}
-	defer os.RemoveAll(tempDir) // クリーンアップ
+	defer os.RemoveAll(tempDir) // Cleanup
 
-	// テンプレートリポジトリをクローン
+	// Clone template repository
 	cloneCmd := exec.CommandContext(ctx, "gh", "repo", "clone", config.Template.FullName, tempDir)
 	if err := cloneCmd.Run(); err != nil {
-		return models.NewGitHubError(fmt.Sprintf("テンプレートリポジトリのクローンに失敗しました: %v", err), err)
+		return models.NewGitHubError(fmt.Sprintf("Failed to clone template repository: %v", err), err)
 	}
 
-	// .gitディレクトリを除外してファイルをコピー
+	// Copy files excluding .git directory
 	if err := wr.copyDirectoryContents(tempDir, config.LocalPath, []string{".git"}); err != nil {
-		return models.NewValidationError(fmt.Sprintf("テンプレートファイルのコピーに失敗しました: %v", err))
+		return models.NewValidationError(fmt.Sprintf("Failed to copy template files: %v", err))
 	}
 
-	// プロジェクト名とDescription を更新（README.mdが存在する場合）
+	// Update project name and description (if README.md exists)
 	if err := wr.updateTemplateVariables(config); err != nil {
-		// エラーが発生してもテンプレート適用は継続
-		fmt.Printf("⚠️  テンプレート変数の更新に失敗しました: %v\n", err)
+		// Continue template application even if error occurs
+		fmt.Printf("⚠️  Failed to update template variables: %v\n", err)
 	}
 
 	return nil
 }
 
-// copyDirectoryContents はディレクトリの内容を別のディレクトリにコピーする（除外リスト対応）
+// copyDirectoryContents copies directory contents to another directory (with exclusion list support)
 func (wr *WizardRunner) copyDirectoryContents(srcDir, dstDir string, excludeDirs []string) error {
 	return filepath.Walk(srcDir, func(srcPath string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// 相対パスを取得
+		// Get relative path
 		relPath, err := filepath.Rel(srcDir, srcPath)
 		if err != nil {
 			return err
 		}
 
-		// ルートディレクトリはスキップ
+		// Skip root directory
 		if relPath == "." {
 			return nil
 		}
 
-		// 除外ディレクトリのチェック
+		// Check for excluded directories
 		for _, excludeDir := range excludeDirs {
 			if strings.HasPrefix(relPath, excludeDir) {
 				if info.IsDir() {
@@ -397,18 +397,18 @@ func (wr *WizardRunner) copyDirectoryContents(srcDir, dstDir string, excludeDirs
 		dstPath := filepath.Join(dstDir, relPath)
 
 		if info.IsDir() {
-			// ディレクトリを作成
+			// Create directory
 			return os.MkdirAll(dstPath, info.Mode())
 		} else {
-			// ファイルをコピー
+			// Copy file
 			return wr.copyFile(srcPath, dstPath)
 		}
 	})
 }
 
-// copyFile はファイルをコピーする
+// copyFile copies a file
 func (wr *WizardRunner) copyFile(srcPath, dstPath string) error {
-	// ディレクトリが存在しない場合は作成
+	// Create directory if it doesn't exist
 	if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
 		return err
 	}
@@ -429,127 +429,127 @@ func (wr *WizardRunner) copyFile(srcPath, dstPath string) error {
 	return err
 }
 
-// updateTemplateVariables はテンプレート内の変数を更新する
+// updateTemplateVariables updates variables within template
 func (wr *WizardRunner) updateTemplateVariables(config *models.ProjectConfig) error {
 	readmePath := filepath.Join(config.LocalPath, "README.md")
-	
-	// README.mdが存在するかチェック
+
+	// Check if README.md exists
 	if _, err := os.Stat(readmePath); os.IsNotExist(err) {
-		// README.mdが存在しない場合は基本的なREADMEを作成
+		// Create basic README if README.md doesn't exist
 		return wr.createBasicFiles(config)
 	}
 
-	// README.mdを読み取り
+	// Read README.md
 	content, err := os.ReadFile(readmePath)
 	if err != nil {
 		return err
 	}
 
-	// テンプレート変数を置換（簡単な例）
+	// Replace template variables (simple example)
 	contentStr := string(content)
-	
-	// 一般的なテンプレート変数を置換
+
+	// Replace common template variables
 	replacements := map[string]string{
-		"{{PROJECT_NAME}}":    config.Name,
-		"{{project_name}}":    config.Name,
-		"{{DESCRIPTION}}":     config.Description,
-		"{{description}}":     config.Description,
-		"${PROJECT_NAME}":     config.Name,
-		"${project_name}":     config.Name,
-		"${DESCRIPTION}":      config.Description,
-		"${description}":      config.Description,
+		"{{PROJECT_NAME}}": config.Name,
+		"{{project_name}}": config.Name,
+		"{{DESCRIPTION}}":  config.Description,
+		"{{description}}":  config.Description,
+		"${PROJECT_NAME}":  config.Name,
+		"${project_name}":  config.Name,
+		"${DESCRIPTION}":   config.Description,
+		"${description}":   config.Description,
 	}
 
 	for placeholder, value := range replacements {
-		if value != "" { // 空の値の場合は置換しない
+		if value != "" { // Don't replace if value is empty
 			contentStr = strings.ReplaceAll(contentStr, placeholder, value)
 		}
 	}
 
-	// 更新された内容を書き戻し
+	// Write back updated content
 	return os.WriteFile(readmePath, []byte(contentStr), 0644)
 }
 
-// createBasicFiles は基本ファイルを作成
+// createBasicFiles creates basic files
 func (wr *WizardRunner) createBasicFiles(config *models.ProjectConfig) error {
-	// README.md作成
+	// Create README.md
 	readmeContent := fmt.Sprintf("# %s\n\n%s\n", config.Name, config.Description)
 	readmePath := fmt.Sprintf("%s/README.md", config.LocalPath)
-	
+
 	if err := os.WriteFile(readmePath, []byte(readmeContent), 0644); err != nil {
-		return models.NewValidationError(fmt.Sprintf("README.mdの作成に失敗しました: %v", err))
+		return models.NewValidationError(fmt.Sprintf("Failed to create README.md: %v", err))
 	}
-	
+
 	return nil
 }
 
-// createGitHubRepository はGitHubリポジトリを作成
+// createGitHubRepository creates a GitHub repository
 func (wr *WizardRunner) createGitHubRepository(ctx context.Context, config *models.ProjectConfig) error {
-	// 初回コミットとファイル追加
+	// Initial commit and file addition
 	addCmd := exec.CommandContext(ctx, "git", "add", ".")
 	addCmd.Dir = config.LocalPath
 	if err := addCmd.Run(); err != nil {
-		return models.NewValidationError(fmt.Sprintf("ファイルのステージングに失敗しました: %v", err))
+		return models.NewValidationError(fmt.Sprintf("Failed to stage files: %v", err))
 	}
-	
+
 	commitCmd := exec.CommandContext(ctx, "git", "commit", "-m", "Initial commit")
 	commitCmd.Dir = config.LocalPath
 	if err := commitCmd.Run(); err != nil {
-		return models.NewValidationError(fmt.Sprintf("初回コミットに失敗しました: %v", err))
+		return models.NewValidationError(fmt.Sprintf("Failed to create initial commit: %v", err))
 	}
-	
-	// 1. GitHubリポジトリを作成（プッシュなし）
+
+	// 1. Create GitHub repository (without push)
 	args := []string{"repo", "create", config.Name}
-	
+
 	if config.Description != "" {
 		args = append(args, "--description", config.Description)
 	}
-	
+
 	if config.IsPrivate {
 		args = append(args, "--private")
 	} else {
 		args = append(args, "--public")
 	}
-	
+
 	createCmd := exec.CommandContext(ctx, "gh", args...)
 	createCmd.Dir = config.LocalPath
-	
+
 	if output, err := createCmd.CombinedOutput(); err != nil {
-		fmt.Printf("エラー出力: %s\n", string(output))
-		return models.NewGitHubError(fmt.Sprintf("GitHubリポジトリの作成に失敗しました: %s", string(output)), err)
+		fmt.Printf("Error output: %s\n", string(output))
+		return models.NewGitHubError(fmt.Sprintf("Failed to create GitHub repository: %s", string(output)), err)
 	}
-	
-	// 2. GitHubユーザー名を取得
+
+	// 2. Get GitHub username
 	userCmd := exec.CommandContext(ctx, "gh", "api", "user", "--jq", ".login")
 	userOutput, err := userCmd.Output()
 	if err != nil {
-		return models.NewValidationError(fmt.Sprintf("GitHubユーザー名の取得に失敗しました: %v", err))
+		return models.NewValidationError(fmt.Sprintf("Failed to get GitHub username: %v", err))
 	}
 	username := strings.TrimSpace(string(userOutput))
-	
-	// 3. リモートリポジトリを追加
+
+	// 3. Add remote repository
 	remoteCmd := exec.CommandContext(ctx, "git", "remote", "add", "origin", fmt.Sprintf("https://github.com/%s/%s.git", username, config.Name))
 	remoteCmd.Dir = config.LocalPath
 	if err := remoteCmd.Run(); err != nil {
-		return models.NewValidationError(fmt.Sprintf("リモートリポジトリの追加に失敗しました: %v", err))
+		return models.NewValidationError(fmt.Sprintf("Failed to add remote repository: %v", err))
 	}
-	
-	// 4. 現在のブランチ名を取得
+
+	// 4. Get current branch name
 	branchCmd := exec.CommandContext(ctx, "git", "branch", "--show-current")
 	branchCmd.Dir = config.LocalPath
 	branchOutput, err := branchCmd.Output()
 	if err != nil {
-		return models.NewValidationError(fmt.Sprintf("現在のブランチ名の取得に失敗しました: %v", err))
+		return models.NewValidationError(fmt.Sprintf("Failed to get current branch name: %v", err))
 	}
 	currentBranch := strings.TrimSpace(string(branchOutput))
-	
-	// 5. 現在のブランチをプッシュ
+
+	// 5. Push current branch
 	pushCmd := exec.CommandContext(ctx, "git", "push", "-u", "origin", currentBranch)
 	pushCmd.Dir = config.LocalPath
 	if output, err := pushCmd.CombinedOutput(); err != nil {
-		fmt.Printf("プッシュエラー (%s): %s\n", currentBranch, string(output))
-		return models.NewGitHubError(fmt.Sprintf("リポジトリへのプッシュに失敗しました: %s", string(output)), err)
+		fmt.Printf("Push error (%s): %s\n", currentBranch, string(output))
+		return models.NewGitHubError(fmt.Sprintf("Failed to push to repository: %s", string(output)), err)
 	}
-	
+
 	return nil
 }

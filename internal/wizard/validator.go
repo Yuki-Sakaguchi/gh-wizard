@@ -9,23 +9,23 @@ import (
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
 )
 
-// ProjectNameValidator はプロジェクト名のバリデーター
+// ProjectNameValidator validates project names
 type ProjectNameValidator struct {
-	minLength      int
-	maxLength      int
-	validPattern   *regexp.Regexp
+	minLength       int
+	maxLength       int
+	validPattern    *regexp.Regexp
 	invalidPatterns []*regexp.Regexp
 }
 
-// NewProjectNameValidator は新しいプロジェクト名バリデーターを作成する
+// NewProjectNameValidator creates a new project name validator
 func NewProjectNameValidator() *ProjectNameValidator {
 	validPattern := regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
 	invalidPatterns := []*regexp.Regexp{
-		regexp.MustCompile(`[^\w.-]`), // 無効文字
-		regexp.MustCompile(`^\.`),     // ドットで開始
-		regexp.MustCompile(`\.$`),     // ドットで終了
-		regexp.MustCompile(`^-`),      // ハイフンで開始
-		regexp.MustCompile(`-$`),      // ハイフンで終了
+		regexp.MustCompile(`[^\w.-]`), // invalid characters
+		regexp.MustCompile(`^\.`),     // starts with dot
+		regexp.MustCompile(`\.$`),     // ends with dot
+		regexp.MustCompile(`^-`),      // starts with hyphen
+		regexp.MustCompile(`-$`),      // ends with hyphen
 	}
 
 	return &ProjectNameValidator{
@@ -36,7 +36,7 @@ func NewProjectNameValidator() *ProjectNameValidator {
 	}
 }
 
-// Validate はプロジェクト名を検証する
+// Validate validates the project name
 func (v *ProjectNameValidator) Validate(name string) error {
 	if err := v.validateBasicRules(name); err != nil {
 		return err
@@ -53,132 +53,132 @@ func (v *ProjectNameValidator) Validate(name string) error {
 	return nil
 }
 
-// validateBasicRules は基本的なバリデーションルールをチェックする
+// validateBasicRules checks basic validation rules
 func (v *ProjectNameValidator) validateBasicRules(name string) error {
 	if name == "" {
-		return fmt.Errorf("プロジェクト名は必須です")
+		return fmt.Errorf("project name is required")
 	}
 
 	if len(name) < v.minLength {
-		return fmt.Errorf("プロジェクト名は%d文字以上である必要があります", v.minLength)
+		return fmt.Errorf("project name must be at least %d characters long", v.minLength)
 	}
 
 	if len(name) > v.maxLength {
-		return fmt.Errorf("プロジェクト名は%d文字以内で入力してください", v.maxLength)
+		return fmt.Errorf("project name must be at most %d characters long", v.maxLength)
 	}
 
-	// スペースのみのチェック
+	// Check for whitespace only
 	if strings.TrimSpace(name) == "" {
-		return fmt.Errorf("プロジェクト名は必須です")
+		return fmt.Errorf("project name is required")
 	}
 
-	// 無効な文字チェック（英数字、ハイフン、アンダースコア、ドットのみ）
+	// Invalid character check (only alphanumeric, hyphens, underscores, and dots allowed)
 	if !isValidProjectName(name) {
-		return fmt.Errorf("プロジェクト名に無効な文字が含まれています。英数字、ハイフン、アンダースコア、ドットのみ使用できます")
+		return fmt.Errorf("project name contains invalid characters. Only alphanumeric characters, hyphens, underscores, and dots are allowed")
 	}
 
 	return nil
 }
 
-// validateGitHubRules はGitHubの制約をチェックする
+// validateGitHubRules checks GitHub constraints
 func (v *ProjectNameValidator) validateGitHubRules(name string) error {
 	if strings.HasPrefix(name, ".") || strings.HasSuffix(name, ".") {
 		if strings.HasPrefix(name, ".") {
-		return fmt.Errorf("ピリオドで始まるプロジェクト名は使用できません")
-	}
-	if strings.HasSuffix(name, ".") {
-		return fmt.Errorf("ピリオドで終わるプロジェクト名は使用できません")
-	}
+			return fmt.Errorf("project names cannot start with a period")
+		}
+		if strings.HasSuffix(name, ".") {
+			return fmt.Errorf("project names cannot end with a period")
+		}
 	}
 
 	if strings.HasPrefix(name, "-") {
-		return fmt.Errorf("ハイフンで始まるプロジェクト名は使用できません")
+		return fmt.Errorf("project names cannot start with a hyphen")
 	}
 	if strings.HasSuffix(name, "-") {
-		return fmt.Errorf("ハイフンで終わるプロジェクト名は使用できません")
+		return fmt.Errorf("project names cannot end with a hyphen")
 	}
 	if strings.HasPrefix(name, "_") {
-		return fmt.Errorf("アンダースコアで始まるプロジェクト名は使用できません")
+		return fmt.Errorf("project names cannot start with an underscore")
 	}
 	if strings.HasSuffix(name, "_") {
-		return fmt.Errorf("アンダースコアで終わるプロジェクト名は使用できません")
+		return fmt.Errorf("project names cannot end with an underscore")
 	}
 
-	// 連続ピリオドや連続ハイフンのチェック
+	// Check for consecutive periods or hyphens
 	if strings.Contains(name, "..") {
-		return fmt.Errorf("連続するピリオドは使用できません")
+		return fmt.Errorf("consecutive periods are not allowed")
 	}
 	if strings.Contains(name, "--") {
-		return fmt.Errorf("連続するハイフンは使用できません")
+		return fmt.Errorf("consecutive hyphens are not allowed")
 	}
 	if strings.Contains(name, "__") {
-		return fmt.Errorf("連続するアンダースコアは使用できません")
+		return fmt.Errorf("consecutive underscores are not allowed")
 	}
 
 	return nil
 }
 
-// validateReservedNames は予約語をチェックする
+// validateReservedNames checks reserved names
 func (v *ProjectNameValidator) validateReservedNames(name string) error {
-	// システム予約語
+	// System reserved names
 	systemReserved := []string{".", "..", "CON", "PRN", "AUX", "NUL", "COM1", "LPT1"}
 	upperName := strings.ToUpper(name)
 	for _, reserved := range systemReserved {
 		if upperName == reserved {
-			return fmt.Errorf("'%s'は予約名のため使用できません", name)
+			return fmt.Errorf("'%s' is a reserved name and cannot be used", name)
 		}
 	}
 
-	// Git関連の予約語
+	// Git-related reserved names
 	gitReserved := []string{".git", ".github"}
 	lowerNameForGit := strings.ToLower(name)
 	for _, reserved := range gitReserved {
 		if lowerNameForGit == reserved {
-			return fmt.Errorf("'%s'は予約名のため使用できません", name)
+			return fmt.Errorf("'%s' is a reserved name and cannot be used", name)
 		}
 	}
 
-	// 一般的な予約語
+	// General reserved names
 	generalReserved := []string{"api", "www", "mail", "ftp", "admin", "root", "test", "debug"}
 	lowerName := strings.ToLower(name)
 	for _, reserved := range generalReserved {
 		if lowerName == reserved {
-			return fmt.Errorf("'%s'は予約名のため使用できません", name)
+			return fmt.Errorf("'%s' is a reserved name and cannot be used", name)
 		}
 	}
-	
+
 	return nil
 }
 
-// validateAdvancedRules は高度なバリデーションルールをチェックする
+// validateAdvancedRules checks advanced validation rules
 func (v *ProjectNameValidator) validateAdvancedRules(name string) error {
-	// 制御文字チェック
+	// Control character check
 	if containsControlChars(name) {
-		return fmt.Errorf("制御文字は使用できません")
+		return fmt.Errorf("control characters are not allowed")
 	}
 
-	// 全て数字の場合は警告
+	// Warning for all-digit names
 	if isAllDigits(name) {
-		return fmt.Errorf("数字のみのプロジェクト名は推奨されません")
+		return fmt.Errorf("all-numeric project names are not recommended")
 	}
 
-	// 特殊文字が多すぎる場合 (40%以上が特殊文字)
+	// Too many special characters (40% or more are special characters)
 	specialCount := countSpecialChars(name)
 	if specialCount > 0 && float64(specialCount)/float64(len(name)) >= 0.4 {
-		return fmt.Errorf("特殊文字が多すぎます")
+		return fmt.Errorf("too many special characters")
 	}
 
 	return nil
 }
 
-// isValidProjectName はプロジェクト名が有効かチェックする
+// isValidProjectName checks if the project name is valid
 func isValidProjectName(name string) bool {
-	// 英数字、ハイフン、アンダースコア、ドットのみ許可
+	// Only alphanumeric characters, hyphens, underscores, and dots allowed
 	validPattern := regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
 	return validPattern.MatchString(name)
 }
 
-// isAllDigits は文字列が全て数字かどうかをチェックする
+// isAllDigits checks if the string contains only digits
 func isAllDigits(s string) bool {
 	for _, r := range s {
 		if !unicode.IsDigit(r) {
@@ -188,7 +188,7 @@ func isAllDigits(s string) bool {
 	return len(s) > 0
 }
 
-// countSpecialChars は特殊文字の数をカウントする
+// countSpecialChars counts the number of special characters
 func countSpecialChars(s string) int {
 	count := 0
 	for _, r := range s {
@@ -199,7 +199,7 @@ func countSpecialChars(s string) int {
 	return count
 }
 
-// containsControlChars は制御文字が含まれているかチェックする
+// containsControlChars checks if the string contains control characters
 func containsControlChars(s string) bool {
 	for _, r := range s {
 		if unicode.IsControl(r) {
@@ -209,7 +209,7 @@ func containsControlChars(s string) bool {
 	return false
 }
 
-// containsStrictControlChars は説明文用の制御文字チェック（改行、タブ、CRは許可）
+// containsStrictControlChars checks for control characters in descriptions (allowing newline, tab, and CR)
 func containsStrictControlChars(s string) bool {
 	for _, r := range s {
 		if unicode.IsControl(r) && r != '\n' && r != '\r' && r != '\t' {
@@ -219,41 +219,41 @@ func containsStrictControlChars(s string) bool {
 	return false
 }
 
-// ValidateDescription は説明文を検証する
+// ValidateDescription validates the description text
 func ValidateDescription(description interface{}) error {
-	// 型アサーション
+	// Type assertion
 	desc, ok := description.(string)
 	if !ok {
-		return fmt.Errorf("無効な入力タイプです")
+		return fmt.Errorf("invalid input type")
 	}
 
 	maxLength := 500
 	maxLines := 5
 
 	if len(desc) > maxLength {
-		return fmt.Errorf("説明は%d文字以内である必要があります", maxLength)
+		return fmt.Errorf("description must be at most %d characters long", maxLength)
 	}
 
-	// 行数チェック
+	// Line count check
 	lines := strings.Split(desc, "\n")
 	if len(lines) > maxLines {
-		return fmt.Errorf("説明は%d行以内である必要があります", maxLines)
+		return fmt.Errorf("description must be at most %d lines", maxLines)
 	}
 
-	// 制御文字チェック（改行、タブ、CRは許可）
+	// Control character check (allowing newline, tab, and CR)
 	if containsStrictControlChars(desc) {
-		return fmt.Errorf("説明に制御文字は使用できません")
+		return fmt.Errorf("control characters are not allowed in description")
 	}
 
 	return nil
 }
 
-// TemplateValidator はテンプレートのバリデーター
+// TemplateValidator validates templates
 type TemplateValidator struct {
 	availableTemplates []models.Template
 }
 
-// NewTemplateValidator は新しいテンプレートバリデーターを作成する
+// NewTemplateValidator creates a new template validator
 func NewTemplateValidator(templates ...[]models.Template) *TemplateValidator {
 	validator := &TemplateValidator{}
 	if len(templates) > 0 {
@@ -262,85 +262,85 @@ func NewTemplateValidator(templates ...[]models.Template) *TemplateValidator {
 	return validator
 }
 
-// Validate はテンプレートを検証する
+// Validate validates the template
 func (v *TemplateValidator) Validate(template *models.Template) error {
 	if template == nil {
-		return fmt.Errorf("テンプレートがnilです")
+		return fmt.Errorf("template is nil")
 	}
 
 	if template.FullName == "" {
-		return fmt.Errorf("テンプレートのFullNameは必須です")
+		return fmt.Errorf("template FullName is required")
 	}
 
 	if template.Name == "" {
-		return fmt.Errorf("テンプレートのNameは必須です")
+		return fmt.Errorf("template Name is required")
 	}
 
 	if !template.IsTemplate {
-		return fmt.Errorf("指定されたリポジトリはテンプレートではありません")
+		return fmt.Errorf("specified repository is not a template")
 	}
 
 	return nil
 }
 
-// ValidateTemplates は複数のテンプレートを検証する
+// ValidateTemplates validates multiple templates
 func (v *TemplateValidator) ValidateTemplates(templates []models.Template) error {
 	if len(templates) == 0 {
-		return fmt.Errorf("テンプレートが指定されていません")
+		return fmt.Errorf("no templates specified")
 	}
 
 	for i, template := range templates {
 		if err := v.Validate(&template); err != nil {
-			return fmt.Errorf("テンプレート[%d]: %w", i, err)
+			return fmt.Errorf("template[%d]: %w", i, err)
 		}
 	}
 
 	return nil
 }
 
-// ValidateTemplateSelection はテンプレート選択を検証する
+// ValidateTemplateSelection validates template selection
 func (v *TemplateValidator) ValidateTemplateSelection(selection string) error {
 	if selection == "" {
-		return fmt.Errorf("テンプレートを選択してください")
+		return fmt.Errorf("please select a template")
 	}
 
-	if selection == "テンプレートなし" {
-		return nil // 有効な選択
+	if selection == "No template" {
+		return nil // Valid selection
 	}
 
-	// 利用可能なテンプレートから検索（表示形式でも検索）
+	// Search available templates (also search by display format)
 	for _, template := range v.availableTemplates {
-		// 名前、FullName、または表示形式で比較
+		// Compare by name, FullName, or display format
 		displayName := template.GetDisplayName()
 		if template.Name == selection || template.FullName == selection || displayName == selection {
 			if !template.IsTemplate {
-				return fmt.Errorf("'%s'はテンプレートとして設定されていません", selection)
+				return fmt.Errorf("'%s' is not configured as a template", selection)
 			}
 			return nil
 		}
 	}
 
-	return fmt.Errorf("テンプレート'%s'は利用できません", selection)
+	return fmt.Errorf("template '%s' is not available", selection)
 }
 
-// GetSurveyValidator はSurvey用のバリデーション関数を返す
+// GetSurveyValidator returns a validation function for Survey
 func (v *TemplateValidator) GetSurveyValidator() func(interface{}) error {
 	return func(ans interface{}) error {
 		selection, ok := ans.(string)
 		if !ok {
-			return fmt.Errorf("無効な入力タイプです")
+			return fmt.Errorf("invalid input type")
 		}
 		return v.ValidateTemplateSelection(selection)
 	}
 }
 
-// ConfigValidator は設定のバリデーター
+// ConfigValidator validates configuration
 type ConfigValidator struct {
-	projectValidator *ProjectNameValidator
+	projectValidator  *ProjectNameValidator
 	templateValidator *TemplateValidator
 }
 
-// NewConfigValidator は新しい設定バリデーターを作成する
+// NewConfigValidator creates a new configuration validator
 func NewConfigValidator(templates ...[]models.Template) *ConfigValidator {
 	validator := &ConfigValidator{
 		projectValidator: NewProjectNameValidator(),
@@ -353,84 +353,84 @@ func NewConfigValidator(templates ...[]models.Template) *ConfigValidator {
 	return validator
 }
 
-// Validate は ProjectConfig を検証する
+// Validate validates ProjectConfig
 func (v *ConfigValidator) Validate(config *models.ProjectConfig) error {
 	if config == nil {
-		return fmt.Errorf("設定がnilです")
+		return fmt.Errorf("configuration is nil")
 	}
 
-	// プロジェクト名検証
+	// Project name validation
 	if err := v.projectValidator.Validate(config.Name); err != nil {
-		return fmt.Errorf("プロジェクト名: %w", err)
+		return fmt.Errorf("project name: %w", err)
 	}
 
-	// 説明検証
+	// Description validation
 	if err := ValidateDescription(config.Description); err != nil {
-		return fmt.Errorf("説明: %w", err)
+		return fmt.Errorf("description: %w", err)
 	}
 
-	// テンプレート検証
+	// Template validation
 	if config.Template != nil {
 		if err := v.templateValidator.Validate(config.Template); err != nil {
-			return fmt.Errorf("テンプレート: %w", err)
+			return fmt.Errorf("template: %w", err)
 		}
 	}
 
-	// ローカルパス検証
+	// Local path validation
 	if err := v.validateLocalPath(config.LocalPath); err != nil {
-		return fmt.Errorf("ローカルパス: %w", err)
+		return fmt.Errorf("local path: %w", err)
 	}
 
 	return nil
 }
 
-// validateLocalPath はローカルパスを検証する
+// validateLocalPath validates the local path
 func (v *ConfigValidator) validateLocalPath(localPath string) error {
 	if localPath == "" {
-		return nil // 空の場合はOK（デフォルト値が使用される）
+		return nil // Empty is OK (default value will be used)
 	}
 
-	// 相対パスの検証（../ は危険）
+	// Relative path validation (../ is dangerous)
 	if strings.Contains(localPath, "..") {
-		return fmt.Errorf("相対パス「..」は使用できません")
+		return fmt.Errorf("relative path '..' is not allowed")
 	}
 
 	return nil
 }
 
-// ValidateConfigs は複数の設定を検証する
+// ValidateConfigs validates multiple configurations
 func (v *ConfigValidator) ValidateConfigs(configs []*models.ProjectConfig) error {
 	if len(configs) == 0 {
-		return fmt.Errorf("設定が指定されていません")
+		return fmt.Errorf("no configurations specified")
 	}
 
 	for i, config := range configs {
 		if err := v.Validate(config); err != nil {
-			return fmt.Errorf("設定[%d]: %w", i, err)
+			return fmt.Errorf("configuration[%d]: %w", i, err)
 		}
 	}
 
 	return nil
 }
 
-// ValidateProjectConfig は ProjectConfig を検証する（エイリアス）
+// ValidateProjectConfig validates ProjectConfig (alias)
 func (v *ConfigValidator) ValidateProjectConfig(config *models.ProjectConfig) error {
 	return v.Validate(config)
 }
 
-// validateGitHubConstraints はGitHub特有の制約を検証する
+// validateGitHubConstraints validates GitHub-specific constraints
 func (v *ConfigValidator) validateGitHubConstraints(config *models.ProjectConfig) error {
 	if !config.CreateGitHub {
-		return nil // GitHubに作成しない場合はスキップ
+		return nil // Skip if not creating on GitHub
 	}
 
-	// GitHub特有の制約をチェック
+	// Check GitHub-specific constraints
 	if strings.Contains(config.Name, "..") {
-		return fmt.Errorf("プロジェクト名に連続するドットは使用できません")
+		return fmt.Errorf("consecutive dots in project name are not allowed")
 	}
 
 	if len(config.Name) > 63 {
-		return fmt.Errorf("GitHubリポジトリ名は63文字以下である必要があります")
+		return fmt.Errorf("GitHub repository name must be 63 characters or less")
 	}
 
 	return nil

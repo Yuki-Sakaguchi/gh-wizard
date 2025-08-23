@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config はアプリケーション設定を表す
+// Config represents application settings
 type Config struct {
 	DefaultPrivate   bool     `yaml:"default_private"`
 	DefaultClone     bool     `yaml:"default_clone"`
@@ -18,23 +18,23 @@ type Config struct {
 	RecentTemplates  []string `yaml:"recent_templates"`
 }
 
-// GetConfigPath は設定ファイルのパスを取得する
+// GetConfigPath returns the configuration file path
 func GetConfigPath() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return "", fmt.Errorf("ホームディレクトリの取得に失敗しました: %w", err)
+		return "", fmt.Errorf("failed to get home directory: %w", err)
 	}
 
 	configDir := filepath.Join(homeDir, ".config", "gh-wizard")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
-		return "", fmt.Errorf("設定ディレクトリの作成に失敗しました: %w", err)
+		return "", fmt.Errorf("failed to create config directory: %w", err)
 	}
 
 	return filepath.Join(configDir, "config.yaml"), nil
 
 }
 
-// Load は設定ファイルを読み込む
+// Load reads the configuration file
 func Load() (*Config, error) {
 	configPath, err := GetConfigPath()
 	if err != nil {
@@ -47,22 +47,22 @@ func Load() (*Config, error) {
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("設定ファイルの読み込みに失敗しました: %w", err)
+		return nil, fmt.Errorf("failed to read configuration file: %w", err)
 	}
 
 	var config Config
 	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("設定ファイルの解析に失敗しました: %w", err)
+		return nil, fmt.Errorf("failed to parse configuration file: %w", err)
 	}
 
 	if err := config.Validate(); err != nil {
-		return nil, fmt.Errorf("設定ファイルが無効です: %w", err)
+		return nil, fmt.Errorf("invalid configuration file: %w", err)
 	}
 
 	return &config, nil
 }
 
-// Save は設定ファイルを保存する
+// Save saves the configuration file
 func (c *Config) Save() error {
 	configPath, err := GetConfigPath()
 	if err != nil {
@@ -71,32 +71,32 @@ func (c *Config) Save() error {
 
 	data, err := yaml.Marshal(c)
 	if err != nil {
-		return fmt.Errorf("設定の YAML 変換に失敗しました: %w", err)
+		return fmt.Errorf("failed to convert configuration to YAML: %w", err)
 	}
 
 	if err := os.WriteFile(configPath, data, 0644); err != nil {
-		return fmt.Errorf("設定の保存に失敗しました: %w", err)
+		return fmt.Errorf("failed to save configuration: %w", err)
 	}
 
 	return nil
 }
 
-// Validate は設定値の妥当性をチェックする
+// Validate checks the validity of configuration values
 func (c *Config) Validate() error {
 	if c.CacheTimeout < 0 {
-		return fmt.Errorf("キャッシュタイムアウトは0以上である必要があります")
+		return fmt.Errorf("cache timeout must be 0 or greater")
 	}
 
 	if c.Theme != "" && c.Theme != "default" && c.Theme != "dark" && c.Theme != "light" {
-		return fmt.Errorf("テーマは 'default', 'dark', 'light' のいずれかである必要があります")
+		return fmt.Errorf("theme must be one of: 'default', 'dark', 'light'")
 	}
 
 	return nil
 }
 
-// AddRecentTemplate は最近使用したテンプレートを追加する
+// AddRecentTemplate adds a recently used template
 func (c *Config) AddRecentTemplate(templateName string) {
-	// すでに存在する場合は先頭に追加し直したいので削除
+	// Remove if already exists, to add to front
 	for i, name := range c.RecentTemplates {
 		if name == templateName {
 			c.RecentTemplates = append(c.RecentTemplates[:i], c.RecentTemplates[i+1:]...)
@@ -104,10 +104,10 @@ func (c *Config) AddRecentTemplate(templateName string) {
 		}
 	}
 
-	// 先頭に追加
+	// Add to front
 	c.RecentTemplates = append([]string{templateName}, c.RecentTemplates...)
 
-	// 10個まで
+	// Limit to 10 items
 	if len(c.RecentTemplates) > 10 {
 		c.RecentTemplates = c.RecentTemplates[:10]
 	}

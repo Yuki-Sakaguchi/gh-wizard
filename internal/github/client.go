@@ -11,61 +11,61 @@ import (
 )
 
 type Client interface {
-	// GetUserTemplate はユーザーのテンプレートリポジトリを取得する
+	// GetUserTemplates gets user's template repositories
 	GetUserTemplates(ctx context.Context) ([]models.Template, error)
 
-	// SearchPopularTemplates は人気のテンプレートリポジトリを検索する
+	// SearchPopularTemplates searches for popular template repositories
 	SearchPopularTemplates(ctx context.Context) ([]models.Template, error)
 
-	// CreateRepository は GitHub リポジトリを作成する
+	// CreateRepository creates a GitHub repository
 	CreateRepository(ctx context.Context, config *models.ProjectConfig) error
 
-	// CheckAuthentication は 認証状態を確認する
+	// CheckAuthentication checks authentication status
 	CheckAuthentication(ctx context.Context) error
 }
 
-// DefaultClient は go-gh で使用するデフォルト実装
+// DefaultClient is the default implementation using go-gh
 type DefaultClient struct {
-	// go-gh クライアントは内部で管理
+	// go-gh client is managed internally
 }
 
-// NewClient は新しい GitHub クライアントを作成する
+// NewClient creates a new GitHub client
 func NewClient() Client {
 	return &DefaultClient{}
 }
 
-// GetUserTemplates はユーザーのテンプレートリポジトリを取得する
+// GetUserTemplates gets user's template repositories
 func (c *DefaultClient) GetUserTemplates(ctx context.Context) ([]models.Template, error) {
-	// TODO: Issue #28で実装予定
-	// テスト用に空のスライスを返す
+	// TODO: Implementation planned in Issue #28
+	// Return empty slice for testing
 	return []models.Template{}, nil
 }
 
-// SearchPopularTemplates はユーザー自身のテンプレートリポジトリを取得する
+// SearchPopularTemplates gets user's own template repositories
 func (c *DefaultClient) SearchPopularTemplates(ctx context.Context) ([]models.Template, error) {
-	// 認証されたユーザーのリポジトリのみを取得
+	// Get only authenticated user's repositories
 	cmd := exec.CommandContext(ctx, "gh", "repo", "list", "--json", "name,owner,stargazerCount,description,isTemplate", "--limit", "100")
-	
+
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get user repositories: %w", err)
 	}
-	
+
 	var repositories []struct {
-		Name           string `json:"name"`
-		Owner          struct {
+		Name  string `json:"name"`
+		Owner struct {
 			Login string `json:"login"`
 		} `json:"owner"`
 		StargazerCount int    `json:"stargazerCount"`
 		Description    string `json:"description"`
 		IsTemplate     bool   `json:"isTemplate"`
 	}
-	
+
 	if err := json.Unmarshal(output, &repositories); err != nil {
 		return nil, fmt.Errorf("failed to parse repository list: %w", err)
 	}
-	
-	// テンプレートリポジトリのみをフィルタ
+
+	// Filter only template repositories
 	var templates []models.Template
 	for _, repo := range repositories {
 		if repo.IsTemplate {
@@ -77,29 +77,28 @@ func (c *DefaultClient) SearchPopularTemplates(ctx context.Context) ([]models.Te
 			})
 		}
 	}
-	
-	// スター数でソート
+
+	// Sort by star count
 	sort.Slice(templates, func(i, j int) bool {
 		return templates[i].Stars > templates[j].Stars
 	})
-	
+
 	return templates, nil
 }
 
-
-// CreateRepository は GitHub リポジトリを作成する
+// CreateRepository creates a GitHub repository
 func (c *DefaultClient) CreateRepository(ctx context.Context, config *models.ProjectConfig) error {
-	// TODO: Issue #28で実装予定
+	// TODO: Implementation planned in Issue #28
 	return nil
 }
 
-// CheckAuthentication は認証状態を確認する
+// CheckAuthentication checks authentication status
 func (c *DefaultClient) CheckAuthentication(ctx context.Context) error {
-	// TODO: Issue #28で実装予定
+	// TODO: Implementation planned in Issue #28
 	return nil
 }
 
-// GetTemplateByFullName は完全名でテンプレートを検索する
+// GetTemplateByFullName searches for template by full name
 func GetTemplateByFullName(templates []models.Template, fullName string) *models.Template {
 	if fullName == "" {
 		return nil
@@ -113,7 +112,7 @@ func GetTemplateByFullName(templates []models.Template, fullName string) *models
 	return nil
 }
 
-// GetTemplateByDisplayName は表示名でテンプレートを検索する
+// GetTemplateByDisplayName searches for template by display name
 func GetTemplateByDisplayName(templates []models.Template, displayName string) *models.Template {
 	for _, template := range templates {
 		if template.GetDisplayName() == displayName {
@@ -123,14 +122,14 @@ func GetTemplateByDisplayName(templates []models.Template, displayName string) *
 	return nil
 }
 
-// SortTemplatesByStars はスター数でテンプレートをソートする
+// SortTemplatesByStars sorts templates by star count
 func SortTemplatesByStars(templates []models.Template) {
 	sort.Slice(templates, func(i, j int) bool {
 		return templates[i].Stars > templates[j].Stars
 	})
 }
 
-// SortTemplatesByUpdated は更新日時でテンプレートをソートする
+// SortTemplatesByUpdated sorts templates by updated date
 func SortTemplatesByUpdated(templates []models.Template) {
 	sort.Slice(templates, func(i, j int) bool {
 		return templates[i].UpdatedAt.After(templates[j].UpdatedAt)
