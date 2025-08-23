@@ -208,3 +208,203 @@ func TestQuestionFlow_ExecuteWithMock(t *testing.T) {
 	assert.False(t, config.IsPrivate)
 	assert.Equal(t, 3, mockExecutor.CallCount) // テンプレート選択 + 基本質問 + 条件付き質問
 }
+
+func TestFormatDescription(t *testing.T) {
+	tests := []struct {
+		name        string
+		description string
+		maxLength   int
+		expected    string
+	}{
+		{
+			name:        "short description",
+			description: "A simple template",
+			maxLength:   50,
+			expected:    "A simple template",
+		},
+		{
+			name:        "long description needs truncation",
+			description: "This is a very long description that exceeds the maximum character limit and should be truncated properly",
+			maxLength:   50,
+			expected:    "This is a very long description that exceeds th...",
+		},
+		{
+			name:        "empty description",
+			description: "",
+			maxLength:   50,
+			expected:    "No description available",
+		},
+		{
+			name:        "exact length description",
+			description: "Exactly fifty characters in this description!",
+			maxLength:   50,
+			expected:    "Exactly fifty characters in this description!",
+		},
+		{
+			name:        "very short max length",
+			description: "Short description",
+			maxLength:   10,
+			expected:    "Short d...",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatDescription(tt.description, tt.maxLength)
+			assert.Equal(t, tt.expected, result)
+			
+			// Ensure result doesn't exceed maxLength
+			assert.LessOrEqual(t, len(result), tt.maxLength)
+		})
+	}
+}
+
+func TestFormatDescriptionForTerminal(t *testing.T) {
+	tests := []struct {
+		name        string
+		description string
+		expected    func(string) bool // Function to validate the result
+	}{
+		{
+			name:        "empty description",
+			description: "",
+			expected: func(result string) bool {
+				return result == "No description available"
+			},
+		},
+		{
+			name:        "short description",
+			description: "Short desc",
+			expected: func(result string) bool {
+				return result == "Short desc"
+			},
+		},
+		{
+			name:        "japanese description",
+			description: "これは日本語の説明文です。とても長い説明文になっています。",
+			expected: func(result string) bool {
+				// Should be truncated and end with "..."
+				return len(result) < len("これは日本語の説明文です。とても長い説明文になっています。") && 
+					   result[len(result)-3:] == "..."
+			},
+		},
+		{
+			name:        "mixed japanese and english",
+			description: "This is a mixed 日本語 and English description that might be very long",
+			expected: func(result string) bool {
+				// Should handle mixed characters properly
+				return len(result) > 0
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatDescriptionForTerminal(tt.description)
+			assert.True(t, tt.expected(result), "Result: %s", result)
+		})
+	}
+}
+
+func TestGetStringDisplayWidth(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected int
+	}{
+		{
+			name:     "ascii characters",
+			input:    "Hello",
+			expected: 5,
+		},
+		{
+			name:     "japanese hiragana",
+			input:    "こんにちは",
+			expected: 10, // Each hiragana character takes 2 display columns
+		},
+		{
+			name:     "japanese kanji",
+			input:    "日本語",
+			expected: 6, // Each kanji character takes 2 display columns
+		},
+		{
+			name:     "mixed characters",
+			input:    "Hello世界",
+			expected: 9, // "Hello" (5) + "世界" (4) = 9
+		},
+		{
+			name:     "emoji",
+			input:    "👋🌍",
+			expected: 4, // Each emoji takes 2 display columns
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getStringDisplayWidth(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestContainsCJKCharacters(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			name:     "english only",
+			input:    "This is a simple English description",
+			expected: false,
+		},
+		{
+			name:     "contains hiragana",
+			input:    "これはひらがなです",
+			expected: true,
+		},
+		{
+			name:     "contains katakana",
+			input:    "コンピュータ",
+			expected: true,
+		},
+		{
+			name:     "contains kanji",
+			input:    "日本語の説明",
+			expected: true,
+		},
+		{
+			name:     "mixed english and japanese",
+			input:    "This is 日本語 mixed content",
+			expected: true,
+		},
+		{
+			name:     "korean characters",
+			input:    "한국어",
+			expected: true,
+		},
+		{
+			name:     "chinese characters",
+			input:    "中文描述",
+			expected: true,
+		},
+		{
+			name:     "numbers and symbols",
+			input:    "123 !@# $%^",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := containsCJKCharacters(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestCalculatePromptWidth(t *testing.T) {
+	width := calculatePromptWidth()
+	// "? Please select a template: " is 28 characters + 5 margin = 33
+	assert.Equal(t, 33, width)
+}
