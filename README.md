@@ -21,22 +21,6 @@ A magical GitHub CLI extension that creates repositories using template reposito
 gh extension install Yuki-Sakaguchi/gh-wizard
 ```
 
-### Basic Usage
-
-```bash
-# Start the interactive wizard
-gh wizard
-
-# Use classic multi-question UI
-gh wizard --classic-ui
-
-# Non-interactive mode
-gh wizard --name my-project --template user/template-repo
-
-# Dry run mode (preview only)
-gh wizard --name my-project --dry-run
-```
-
 ## 🎯 Usage Examples
 
 ### Interactive Mode (Default)
@@ -68,29 +52,6 @@ $ gh wizard
 ✓ Private:      False
 
 ? Create project with this configuration? (y/N) 
-```
-
-### Command Line Options
-
-| Option | Short | Description | Example |
-|--------|-------|-------------|---------|
-| `--name` | `-n` | Project name (required for non-interactive) | `--name my-project` |
-| `--template` | `-t` | Template to use | `--template user/repo` |
-| `--dry-run` | | Preview configuration without creating | `--dry-run` |
-| `--yes` | `-y` | Skip all confirmations | `--yes` |
-| `--classic-ui` | | Use classic multi-question UI | `--classic-ui` |
-
-### Advanced Examples
-
-```bash
-# Create project with specific template
-gh wizard --name my-api --template myorg/fastapi-template --yes
-
-# Preview what would be created
-gh wizard --name test-project --template user/template --dry-run
-
-# Use classic UI for batch operations
-gh wizard --classic-ui --name batch-project
 ```
 
 ## 🔧 How It Works
@@ -146,54 +107,9 @@ go test -cover ./...
 go test ./internal/wizard/...
 ```
 
-## 🎨 UI Features
-
-### Create-Next-App Style Interface
-
-- **Progressive Disclosure**: One question at a time for better focus
-- **Visual Feedback**: Checkmarks show completed steps
-- **Smart Defaults**: Sensible defaults for common workflows
-- **Error Handling**: Clear, actionable error messages
-
-### Terminal Optimization
-
-- **Dynamic Width Adaptation**: Automatically adjusts to your terminal size
-- **CJK Character Support**: Proper handling of Japanese, Chinese, and Korean characters
-- **Responsive Layout**: Works well on both narrow and wide terminals
-- **Accessibility**: Screen reader friendly output
-
-## 📚 Template Repository Setup
-
-To make your repositories discoverable by gh-wizard:
-
-1. Go to your repository on GitHub
-2. Navigate to Settings → General
-3. Check "Template repository" under Repository template
-4. Add descriptive topics for better categorization
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### Quick Contribution Steps
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Add tests for your changes
-5. Run tests (`go test ./...`)
-6. Commit using conventional commits
-7. Push and create a Pull Request
-
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Inspired by [create-next-app](https://nextjs.org/docs/api-reference/create-next-app) and [create-react-app](https://create-react-app.dev/)
-- Built with [GitHub CLI](https://cli.github.com/) and [go-gh](https://github.com/cli/go-gh)
-- UI powered by [survey](https://github.com/AlecAivazis/survey) with custom enhancements
 
 ## 🐛 Issues & Support
 
