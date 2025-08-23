@@ -3,8 +3,6 @@
 A magical GitHub CLI extension that creates repositories using template repositories with an intuitive, create-next-app style interface.
 
 [![Release](https://img.shields.io/github/v/release/Yuki-Sakaguchi/gh-wizard)](https://github.com/Yuki-Sakaguchi/gh-wizard/releases)
-[![Tests](https://github.com/Yuki-Sakaguchi/gh-wizard/workflows/Test/badge.svg)](https://github.com/Yuki-Sakaguchi/gh-wizard/actions)
-[![License](https://img.shields.io/github/license/Yuki-Sakaguchi/gh-wizard)](LICENSE)
 
 ## ✨ Features
 
