@@ -108,7 +108,7 @@ func (qf *QuestionFlow) CreateQuestions() []*survey.Question {
 				Message: "Please select a template:",
 				Options: templateOptions,
 				Description: func(value string, index int) string {
-					return "Select base template for your project"
+					return qf.templates[index].Description
 				},
 			},
 			Validate: survey.Required,
