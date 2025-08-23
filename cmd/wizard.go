@@ -273,6 +273,9 @@ func (wr *WizardRunner) printConfiguration(config *models.ProjectConfig) {
 
 // confirmConfiguration asks user to confirm configuration
 func (wr *WizardRunner) confirmConfiguration() (bool, error) {
+	// Add a blank line before the confirmation question
+	fmt.Println()
+	
 	confirm := false
 	prompt := &survey.Confirm{
 		Message: "Create project with this configuration?",
