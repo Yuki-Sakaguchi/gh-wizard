@@ -346,3 +346,65 @@ func TestGetStringDisplayWidth(t *testing.T) {
 		})
 	}
 }
+
+func TestContainsCJKCharacters(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			name:     "english only",
+			input:    "This is a simple English description",
+			expected: false,
+		},
+		{
+			name:     "contains hiragana",
+			input:    "これはひらがなです",
+			expected: true,
+		},
+		{
+			name:     "contains katakana",
+			input:    "コンピュータ",
+			expected: true,
+		},
+		{
+			name:     "contains kanji",
+			input:    "日本語の説明",
+			expected: true,
+		},
+		{
+			name:     "mixed english and japanese",
+			input:    "This is 日本語 mixed content",
+			expected: true,
+		},
+		{
+			name:     "korean characters",
+			input:    "한국어",
+			expected: true,
+		},
+		{
+			name:     "chinese characters",
+			input:    "中文描述",
+			expected: true,
+		},
+		{
+			name:     "numbers and symbols",
+			input:    "123 !@# $%^",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := containsCJKCharacters(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestCalculatePromptWidth(t *testing.T) {
+	width := calculatePromptWidth()
+	// "? Please select a template: " is 28 characters + 5 margin = 33
+	assert.Equal(t, 33, width)
+}

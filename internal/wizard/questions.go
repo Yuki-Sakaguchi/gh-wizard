@@ -77,6 +77,16 @@ func getStringDisplayWidth(s string) int {
 	return runewidth.StringWidth(s)
 }
 
+// calculatePromptWidth calculates the actual width used by the survey prompt
+func calculatePromptWidth() int {
+	// "? Please select a template: " + some margin for selection indicators
+	promptText := "? Please select a template: "
+	baseWidth := getStringDisplayWidth(promptText)
+	// Add margin for selection indicators and padding
+	margin := 5
+	return baseWidth + margin
+}
+
 // formatDescriptionForTerminal formats template description with dynamic terminal width consideration
 func formatDescriptionForTerminal(description string) string {
 	if description == "" {
@@ -84,14 +94,30 @@ func formatDescriptionForTerminal(description string) string {
 	}
 	
 	termWidth := getTerminalWidth()
-	// Reserve space for: "? Please select a template: " prompt text and some padding
-	// Survey typically uses about 30-40 characters for the prompt part
-	reservedSpace := 40
-	availableWidth := termWidth - reservedSpace
+	// Calculate actual prompt width instead of using fixed 40
+	promptWidth := calculatePromptWidth()
 	
-	// Ensure we have at least 20 characters for the description
-	if availableWidth < 20 {
-		availableWidth = 20
+	// More aggressive optimization: reduce template option buffer based on actual content
+	// Most template names are shorter than expected
+	baseTemplateBuffer := 20  // Reduced from 35
+	templateOptionBuffer := baseTemplateBuffer
+	
+	// For mixed language content, be even more generous with space allocation
+	if containsCJKCharacters(description) {
+		// Even more aggressive for CJK content - they need more space per character
+		templateOptionBuffer = 15  // Further reduced for CJK
+	}
+	
+	availableWidth := termWidth - promptWidth - templateOptionBuffer
+	
+	// Ensure we have reasonable minimum space for the description
+	minWidth := 25
+	if containsCJKCharacters(description) {
+		minWidth = 35  // CJK characters need more minimum space
+	}
+	
+	if availableWidth < minWidth {
+		availableWidth = minWidth
 	}
 	
 	currentWidth := getStringDisplayWidth(description)
@@ -123,6 +149,99 @@ func formatDescriptionForTerminal(description string) string {
 	
 	return result + ellipsis
 }
+
+
+// formatDescriptionForTerminalWithTemplates formats description with actual template display widths
+func formatDescriptionForTerminalWithTemplates(description string, templates []models.Template) string {
+	if description == "" {
+		return "No description available"
+	}
+	
+	termWidth := getTerminalWidth()
+	promptWidth := calculatePromptWidth()
+	
+	// Calculate the actual maximum width of formatted template display
+	// Template is displayed as: "nextjs-starter - Description here"
+	maxTemplateDisplayWidth := 0
+	for _, template := range templates {
+		formattedOption := formatTemplateOption(template)
+		displayWidth := getStringDisplayWidth(formattedOption)
+		if displayWidth > maxTemplateDisplayWidth {
+			maxTemplateDisplayWidth = displayWidth
+		}
+	}
+	
+	// Add buffer for the separator " - " and some spacing
+	templateDisplayBuffer := maxTemplateDisplayWidth + 3  // 3 for " - "
+	
+	availableWidth := termWidth - promptWidth - templateDisplayBuffer
+	
+	// Ensure we have reasonable minimum space for the description
+	minWidth := 20
+	if containsCJKCharacters(description) {
+		minWidth = 25
+	}
+	
+	if availableWidth < minWidth {
+		availableWidth = minWidth
+	}
+	
+	// Debug output
+	if os.Getenv("DEBUG_DESCRIPTION") == "1" {
+		currentWidth := getStringDisplayWidth(description)
+		isCJK := containsCJKCharacters(description)
+		
+		fmt.Printf("\n[DEBUG] Terminal: %d, Prompt: %d, MaxTemplateDisplay: %d, Buffer: %d, Available: %d, Description: %d, CJK: %t\n", 
+			termWidth, promptWidth, maxTemplateDisplayWidth, templateDisplayBuffer, availableWidth, currentWidth, isCJK)
+		fmt.Printf("[DEBUG] Description: %s\n", description)
+	}
+	
+	currentWidth := getStringDisplayWidth(description)
+	if currentWidth <= availableWidth {
+		return description
+	}
+	
+	// Truncate by runes, not bytes, considering display width
+	ellipsis := "..."
+	ellipsisWidth := getStringDisplayWidth(ellipsis)
+	targetWidth := availableWidth - ellipsisWidth
+	
+	if targetWidth <= 0 {
+		return ellipsis
+	}
+	
+	runes := []rune(description)
+	result := ""
+	currentDisplayWidth := 0
+	
+	for _, r := range runes {
+		runeWidth := runewidth.RuneWidth(r)
+		if currentDisplayWidth+runeWidth > targetWidth {
+			break
+		}
+		result += string(r)
+		currentDisplayWidth += runeWidth
+	}
+	
+	return result + ellipsis
+}
+
+// containsCJKCharacters checks if the string contains Chinese, Japanese, or Korean characters
+func containsCJKCharacters(s string) bool {
+	for _, r := range s {
+		// Check for CJK Unified Ideographs, Hiragana, Katakana, and other CJK ranges
+		if (r >= 0x4E00 && r <= 0x9FFF) || // CJK Unified Ideographs
+		   (r >= 0x3040 && r <= 0x309F) || // Hiragana
+		   (r >= 0x30A0 && r <= 0x30FF) || // Katakana
+		   (r >= 0xAC00 && r <= 0xD7AF) || // Hangul (Korean)
+		   (r >= 0x3100 && r <= 0x312F) || // Bopomofo
+		   (r >= 0x31A0 && r <= 0x31BF) {  // Bopomofo Extended
+			return true
+		}
+	}
+	return false
+}
+
 
 // formatDescription formats template description with truncation (legacy function for tests)
 func formatDescription(description string, maxLength int) string {
@@ -208,7 +327,7 @@ func (qf *QuestionFlow) CreateQuestions() []*survey.Question {
 				Message: "Please select a template:",
 				Options: templateOptions,
 				Description: func(value string, index int) string {
-					return formatDescriptionForTerminal(qf.templates[index].Description)
+					return formatDescriptionForTerminalWithTemplates(qf.templates[index].Description, qf.templates)
 				},
 			},
 			Validate: survey.Required,
