@@ -242,6 +242,14 @@ func containsCJKCharacters(s string) bool {
 	return false
 }
 
+// clearPreviousLines clears the previous lines from terminal
+func clearPreviousLines(lineCount int) {
+	for i := 0; i < lineCount; i++ {
+		fmt.Print("\033[1A") // Move up one line
+		fmt.Print("\033[2K") // Clear entire line
+	}
+}
+
 
 // formatDescription formats template description with truncation (legacy function for tests)
 func formatDescription(description string, maxLength int) string {
@@ -383,6 +391,133 @@ func (qf *QuestionFlow) CreateBasicQuestions() []*survey.Question {
 			},
 		},
 	}
+}
+
+// ExecuteCreateNextAppStyle runs the question flow with create-next-app style UI
+func (qf *QuestionFlow) ExecuteCreateNextAppStyle() (*models.ProjectConfig, error) {
+	fmt.Println()
+
+	// 1. Template selection (if templates are available)
+	if len(qf.templates) > 0 {
+		templateQuestion := qf.CreateQuestions()[0]
+		
+		var templateAnswer struct {
+			Template string `survey:"template"`
+		}
+		
+		err := survey.AskOne(templateQuestion.Prompt, &templateAnswer.Template, survey.WithValidator(templateQuestion.Validate))
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute template selection: %w", err)
+		}
+		qf.answers.Template = templateAnswer.Template
+		
+		// Clear only the select prompt question line
+		clearPreviousLines(1)
+		
+		// Show completed template selection
+		selectedTemplate := qf.findSelectedTemplate()
+		templateName := "None"
+		if selectedTemplate != nil {
+			templateName = selectedTemplate.Name
+		}
+		fmt.Printf("✓ Please select a template: … %s\n", templateName)
+	}
+
+	// 2. Project name
+	projectNamePrompt := &survey.Input{
+		Message: "What is your project named?",
+		Help:    "Alphanumeric characters, hyphens, and underscores are allowed",
+	}
+	
+	err := survey.AskOne(projectNamePrompt, &qf.answers.ProjectName, survey.WithValidator(survey.Required))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project name: %w", err)
+	}
+	
+	// Clear the input question line
+	clearPreviousLines(1)
+	fmt.Printf("✓ What is your project named? … %s\n", qf.answers.ProjectName)
+
+	// 3. Description (optional)
+	descPrompt := &survey.Input{
+		Message: "Enter project description (optional):",
+		Help:    "Brief description of the project",
+	}
+	
+	err = survey.AskOne(descPrompt, &qf.answers.Description)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project description: %w", err)
+	}
+	
+	// Clear the input question line
+	clearPreviousLines(1)
+	if qf.answers.Description != "" {
+		fmt.Printf("✓ Enter project description (optional): … %s\n", qf.answers.Description)
+	} else {
+		fmt.Printf("✓ Enter project description (optional): … (skipped)\n")
+	}
+
+	// 4. GitHub repository creation
+	githubPrompt := &survey.Confirm{
+		Message: "Create repository on GitHub?",
+		Default: false,
+		Help:    "If No, project will be created locally only",
+	}
+	
+	err = survey.AskOne(githubPrompt, &qf.answers.CreateGitHub)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub preference: %w", err)
+	}
+	
+	// Clear the confirmation question line
+	clearPreviousLines(1)
+	githubAnswer := "No"
+	if qf.answers.CreateGitHub {
+		githubAnswer = "Yes"
+	}
+	fmt.Printf("✓ Create repository on GitHub? … %s\n", githubAnswer)
+
+	// 5. Private repository (if creating GitHub repo)
+	if qf.answers.CreateGitHub {
+		privatePrompt := &survey.Confirm{
+			Message: "Create as private repository?",
+			Default: true,
+			Help:    "Private: Only you can access / Public: Anyone can access",
+		}
+		
+		err = survey.AskOne(privatePrompt, &qf.answers.IsPrivate)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get repository privacy preference: %w", err)
+		}
+		
+		// Clear the confirmation question line
+		clearPreviousLines(1)
+		privateAnswer := "Public"
+		if qf.answers.IsPrivate {
+			privateAnswer = "Private"
+		}
+		fmt.Printf("✓ Create as private repository? … %s\n", privateAnswer)
+	}
+
+	fmt.Println()
+
+	// Convert answers to ProjectConfig
+	config := &models.ProjectConfig{
+		Name:         qf.answers.ProjectName,
+		Description:  qf.answers.Description,
+		CreateGitHub: qf.answers.CreateGitHub,
+		IsPrivate:    qf.answers.IsPrivate,
+	}
+
+	// Search for template
+	for _, template := range qf.templates {
+		if formatTemplateOption(template) == qf.answers.Template {
+			config.Template = &template
+			break
+		}
+	}
+
+	return config, nil
 }
 
 // Execute runs the question flow and returns ProjectConfig
