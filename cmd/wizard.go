@@ -20,10 +20,10 @@ import (
 )
 
 var (
-	templateFlag string
-	nameFlag     string
-	dryRunFlag   bool
-	yesFlag      bool
+	templateFlag  string
+	nameFlag      string
+	dryRunFlag    bool
+	yesFlag       bool
 	classicUIFlag bool
 )
 
@@ -117,7 +117,7 @@ func runWizard(cmd *cobra.Command, args []string) error {
 			return runner.handleError(err)
 		}
 		if !confirmed {
-			fmt.Println("⏹️  Cancelled")
+			fmt.Println("👋 Exiting...")
 			return nil
 		}
 	}
@@ -199,7 +199,7 @@ func (wr *WizardRunner) runInteractiveMode(templates []models.Template) (*models
 	// Execute interactive questions with appropriate UI style
 	var config *models.ProjectConfig
 	var err error
-	
+
 	if classicUIFlag {
 		// Use classic multi-question UI
 		config, err = flow.Execute()
@@ -207,7 +207,7 @@ func (wr *WizardRunner) runInteractiveMode(templates []models.Template) (*models
 		// Use create-next-app style UI (default)
 		config, err = flow.ExecuteCreateNextAppStyle()
 	}
-	
+
 	if err != nil {
 		return nil, models.NewValidationError(fmt.Sprintf("Failed to execute questions: %v", err))
 	}
@@ -247,26 +247,26 @@ func (wr *WizardRunner) handleError(err error) error {
 
 // printConfiguration displays configuration details
 func (wr *WizardRunner) printConfiguration(config *models.ProjectConfig) {
-	fmt.Println("📋 Configuration Review")
-	fmt.Printf("📝 Project Name: %s\n", config.Name)
+	fmt.Println("📝 Configuration Review")
+	fmt.Printf("✓ Project Name: %s\n", config.Name)
 
 	if config.Description != "" {
-		fmt.Printf("📖 Description: %s\n", config.Description)
+		fmt.Printf("✓ Description:  %s\n", config.Description)
 	}
 
 	if config.Template != nil {
-		fmt.Printf("📦 Template: %s (%d⭐)\n", config.Template.FullName, config.Template.Stars)
+		fmt.Printf("✓ Template:     %s (%d⭐)\n", config.Template.FullName, config.Template.Stars)
 	} else {
-		fmt.Println("📦 Template: None")
+		fmt.Println("✓ Template:     None")
 	}
 
-	fmt.Printf("📁 Local Path: %s\n", config.LocalPath)
+	fmt.Printf("✓ Local Path:   %s\n", config.LocalPath)
 
 	if config.CreateGitHub {
 		if config.IsPrivate {
-			fmt.Println("👁️  Visibility: Private")
+			fmt.Println("✓ Private:      True")
 		} else {
-			fmt.Println("👁️  Visibility: Public")
+			fmt.Println("✓ Private:      False")
 		}
 	}
 }
@@ -275,7 +275,7 @@ func (wr *WizardRunner) printConfiguration(config *models.ProjectConfig) {
 func (wr *WizardRunner) confirmConfiguration() (bool, error) {
 	// Add a blank line before the confirmation question
 	fmt.Println()
-	
+
 	confirm := false
 	prompt := &survey.Confirm{
 		Message: "Create project with this configuration?",
