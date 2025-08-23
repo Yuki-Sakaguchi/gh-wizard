@@ -411,8 +411,8 @@ func (qf *QuestionFlow) ExecuteCreateNextAppStyle() (*models.ProjectConfig, erro
 		}
 		qf.answers.Template = templateAnswer.Template
 		
-		// Clear the question lines (typically 2-3 lines for select prompt)
-		clearPreviousLines(3)
+		// Clear only the select prompt question line
+		clearPreviousLines(1)
 		
 		// Show completed template selection
 		selectedTemplate := qf.findSelectedTemplate()
@@ -420,7 +420,7 @@ func (qf *QuestionFlow) ExecuteCreateNextAppStyle() (*models.ProjectConfig, erro
 		if selectedTemplate != nil {
 			templateName = selectedTemplate.Name
 		}
-		fmt.Printf("✓ Which template would you like to use? … %s\n", templateName)
+		fmt.Printf("✓ Please select a template: … %s\n", templateName)
 	}
 
 	// 2. Project name
