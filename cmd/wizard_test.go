@@ -77,21 +77,21 @@ func TestWizardTestSuite(t *testing.T) {
 }
 
 func (suite *WizardTestSuite) TestWizardCommand_Help() {
-	// Basic check of the actual wizardCmd
-	assert.Equal(suite.T(), "wizard", wizardCmd.Use)
-	assert.Contains(suite.T(), wizardCmd.Long, "GitHub Repository Wizard")
-	assert.Contains(suite.T(), wizardCmd.Short, "Start interactive repository creation wizard")
+	// Basic check of the actual rootCmd (now contains wizard functionality)
+	assert.Equal(suite.T(), "wizard", rootCmd.Use)
+	assert.Contains(suite.T(), rootCmd.Long, "GitHub repository creation wizard")
+	assert.Contains(suite.T(), rootCmd.Short, "GitHub Repository Wizard")
 
 	// Check if flags are correctly defined
-	templateFlag := wizardCmd.Flags().Lookup("template")
+	templateFlag := rootCmd.Flags().Lookup("template")
 	require.NotNil(suite.T(), templateFlag)
 	assert.Equal(suite.T(), "t", templateFlag.Shorthand)
 
-	nameFlag := wizardCmd.Flags().Lookup("name")
+	nameFlag := rootCmd.Flags().Lookup("name")
 	require.NotNil(suite.T(), nameFlag)
 	assert.Equal(suite.T(), "n", nameFlag.Shorthand)
 
-	dryRunFlag := wizardCmd.Flags().Lookup("dry-run")
+	dryRunFlag := rootCmd.Flags().Lookup("dry-run")
 	require.NotNil(suite.T(), dryRunFlag)
 }
 
