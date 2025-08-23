@@ -2,9 +2,12 @@ package wizard
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
+	"github.com/mattn/go-runewidth"
+	"golang.org/x/term"
 )
 
 // Answers stores Survey responses
@@ -59,6 +62,103 @@ func formatTemplateOption(template models.Template) string {
 	return fmt.Sprintf("%s%s%s", template.Name, stars, language)
 }
 
+// getTerminalWidth gets the current terminal width
+func getTerminalWidth() int {
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		// Fallback to 80 columns if we can't detect terminal size
+		return 80
+	}
+	return width
+}
+
+// getStringDisplayWidth calculates the display width of a string considering multi-byte characters
+func getStringDisplayWidth(s string) int {
+	return runewidth.StringWidth(s)
+}
+
+// formatDescriptionForTerminal formats template description with dynamic terminal width consideration
+func formatDescriptionForTerminal(description string) string {
+	if description == "" {
+		return "No description available"
+	}
+	
+	termWidth := getTerminalWidth()
+	// Reserve space for: "? Please select a template: " prompt text and some padding
+	// Survey typically uses about 30-40 characters for the prompt part
+	reservedSpace := 40
+	availableWidth := termWidth - reservedSpace
+	
+	// Ensure we have at least 20 characters for the description
+	if availableWidth < 20 {
+		availableWidth = 20
+	}
+	
+	currentWidth := getStringDisplayWidth(description)
+	if currentWidth <= availableWidth {
+		return description
+	}
+	
+	// Truncate by runes, not bytes, considering display width
+	ellipsis := "..."
+	ellipsisWidth := getStringDisplayWidth(ellipsis)
+	targetWidth := availableWidth - ellipsisWidth
+	
+	if targetWidth <= 0 {
+		return ellipsis
+	}
+	
+	runes := []rune(description)
+	result := ""
+	currentDisplayWidth := 0
+	
+	for _, r := range runes {
+		runeWidth := runewidth.RuneWidth(r)
+		if currentDisplayWidth+runeWidth > targetWidth {
+			break
+		}
+		result += string(r)
+		currentDisplayWidth += runeWidth
+	}
+	
+	return result + ellipsis
+}
+
+// formatDescription formats template description with truncation (legacy function for tests)
+func formatDescription(description string, maxLength int) string {
+	if description == "" {
+		return "No description available"
+	}
+	
+	currentWidth := getStringDisplayWidth(description)
+	if currentWidth <= maxLength {
+		return description
+	}
+	
+	ellipsis := "..."
+	ellipsisWidth := getStringDisplayWidth(ellipsis)
+	targetWidth := maxLength - ellipsisWidth
+	
+	if targetWidth <= 0 {
+		return ellipsis
+	}
+	
+	runes := []rune(description)
+	result := ""
+	currentDisplayWidth := 0
+	
+	for _, r := range runes {
+		runeWidth := runewidth.RuneWidth(r)
+		if currentDisplayWidth+runeWidth > targetWidth {
+			break
+		}
+		result += string(r)
+		currentDisplayWidth += runeWidth
+	}
+	
+	return result + ellipsis
+}
+
 // findSelectedTemplate retrieves the selected template
 func (qf *QuestionFlow) findSelectedTemplate() *models.Template {
 	// Return nil if no template is selected
@@ -108,7 +208,7 @@ func (qf *QuestionFlow) CreateQuestions() []*survey.Question {
 				Message: "Please select a template:",
 				Options: templateOptions,
 				Description: func(value string, index int) string {
-					return qf.templates[index].Description
+					return formatDescriptionForTerminal(qf.templates[index].Description)
 				},
 			},
 			Validate: survey.Required,
