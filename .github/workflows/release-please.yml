@@ -9,6 +9,8 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
+  repository-projects: write
 
 jobs:
   release-please:
@@ -24,6 +26,8 @@ jobs:
           # Use default manifest file path: .release-please-manifest.json
           # The action will automatically detect these files in the repository root
           token: ${{ secrets.GITHUB_TOKEN }}
+          # If above fails, you can create a Personal Access Token with repo scope
+          # and use it instead: token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
   # This job will be triggered only when a release is created by release-please
   # It will call the existing release.yml workflow to build and publish binaries
