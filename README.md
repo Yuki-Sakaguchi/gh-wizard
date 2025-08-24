@@ -108,6 +108,85 @@ go test -cover ./...
 go test ./internal/wizard/...
 ```
 
+## 🪝 Git Hooks (Optional)
+
+This project supports automatic conventional commit prefix generation using [lefthook](https://github.com/evilmartians/lefthook).
+
+### What is Lefthook?
+
+Lefthook is a fast, cross-platform Git hooks manager that helps automate development workflows. In gh-wizard, it automatically adds conventional commit prefixes based on your branch name.
+
+### Quick Setup
+
+1. **Install lefthook**:
+   ```bash
+   # macOS (Homebrew)
+   brew install lefthook
+   
+   # Linux/macOS (Go install) 
+   go install github.com/evilmartians/lefthook@latest
+   
+   # Windows (Scoop)
+   scoop install lefthook
+   ```
+
+2. **Install hooks**:
+   ```bash
+   lefthook install
+   ```
+
+3. **Start using automatic prefixes**:
+   ```bash
+   git checkout -b feature/awesome-feature
+   git commit -m "add awesome feature"  # Becomes: "feat: add awesome feature"
+   ```
+
+### Branch Name Mapping
+
+| Branch Pattern | Prefix | Example |
+|----------------|--------|---------|
+| `feature/*`, `feat/*` | `feat:` | `feature/user-auth` → `feat: your message` |
+| `fix/*`, `bugfix/*` | `fix:` | `fix/login-bug` → `fix: your message` |
+| `docs/*` | `docs:` | `docs/update-api` → `docs: your message` |
+| `refactor/*` | `refactor:` | `refactor/clean-code` → `refactor: your message` |
+| `test/*` | `test:` | `test/add-validation` → `test: your message` |
+| `chore/*` | `chore:` | `chore/update-deps` → `chore: your message` |
+| `perf/*` | `perf:` | `perf/optimize-query` → `perf: your message` |
+| `ci/*` | `ci:` | `ci/update-workflow` → `ci: your message` |
+| `build/*` | `build:` | `build/webpack-config` → `build: your message` |
+| `style/*` | `style:` | `style/format-code` → `style: your message` |
+
+### Smart Behavior
+
+- **Already prefixed commits**: No changes made
+- **Main branches** (`main`, `master`, `develop`): No prefix added
+- **Merge/revert commits**: Automatically skipped
+- **Unknown branch patterns**: No prefix added (manual control)
+
+### Debugging
+
+Enable debug mode to see what's happening:
+
+```bash
+DEBUG_LEFTHOOK=1 git commit -m "test message"
+```
+
+### Configuration
+
+The configuration is stored in `.lefthook.yml` and shared across the team. The setup includes:
+
+- **commit-msg hook**: Automatic prefix generation
+- **pre-commit hooks**: Go formatting, tests, and module tidying
+- **Cross-platform compatibility**: Works on macOS, Linux, and Windows
+
+### Manual Override
+
+You can always use manual prefixes - lefthook won't modify them:
+
+```bash
+git commit -m "feat: my custom message"  # No changes made
+git commit -m "fix(auth): specific fix"  # No changes made
+```
 
 ## 📄 License
 

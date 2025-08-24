@@ -158,6 +158,116 @@ fix(auth): handle GitHub authentication timeout
 - Use the body to explain what and why vs. how
 - Reference issues and PRs when appropriate
 
+## 🪝 Automatic Conventional Commits (Optional)
+
+**Want to save time?** You can use lefthook for automatic prefix generation based on branch names!
+
+### Setup Lefthook
+
+1. **Install lefthook**:
+   ```bash
+   # macOS (Homebrew) - Recommended
+   brew install lefthook
+   
+   # Linux/macOS (Go install)
+   go install github.com/evilmartians/lefthook@latest
+   
+   # Windows (Scoop)
+   scoop install lefthook
+   ```
+
+2. **Install hooks in the project**:
+   ```bash
+   # This installs the Git hooks defined in .lefthook.yml
+   lefthook install
+   ```
+
+3. **Verify setup**:
+   ```bash
+   lefthook version
+   ```
+
+### How It Works
+
+Once installed, lefthook automatically adds conventional commit prefixes based on your branch name:
+
+```bash
+# Create a feature branch
+git checkout -b feature/user-authentication
+
+# Commit with simple message
+git commit -m "add login form validation"
+
+# Lefthook automatically converts to:
+# "feat: add login form validation"
+```
+
+### Branch Name Mapping
+
+| Branch Pattern | Auto Prefix | Example |
+|---------------|-------------|---------|
+| `feature/*`, `feat/*` | `feat:` | `feature/user-auth` → `feat: your message` |
+| `fix/*`, `bugfix/*` | `fix:` | `fix/login-bug` → `fix: your message` |
+| `docs/*` | `docs:` | `docs/update-readme` → `docs: your message` |
+| `refactor/*` | `refactor:` | `refactor/cleanup` → `refactor: your message` |
+| `test/*` | `test:` | `test/add-e2e` → `test: your message` |
+| `chore/*` | `chore:` | `chore/update-deps` → `chore: your message` |
+| `perf/*` | `perf:` | `perf/optimize` → `perf: your message` |
+| `ci/*` | `ci:` | `ci/github-actions` → `ci: your message` |
+| `build/*` | `build:` | `build/webpack` → `build: your message` |
+| `style/*` | `style:` | `style/formatting` → `style: your message` |
+
+### Smart Features
+
+- **Already prefixed**: No changes if your commit already has a conventional prefix
+- **Main branches**: No prefix added on `main`, `master`, or `develop` branches  
+- **Manual override**: You can still use manual prefixes - they won't be modified
+- **Merge commits**: Automatically skipped (no prefix added to merge commits)
+
+### Examples
+
+```bash
+# Branch: feature/shopping-cart
+git commit -m "add cart item validation"
+# Result: "feat: add cart item validation"
+
+# Branch: fix/payment-error  
+git commit -m "handle stripe timeout"
+# Result: "fix: handle stripe timeout"
+
+# Manual prefix (no change)
+git commit -m "feat(ui): add custom button component"  
+# Result: "feat(ui): add custom button component" (unchanged)
+
+# Main branch (no prefix)  
+git checkout main
+git commit -m "update documentation"
+# Result: "update documentation" (unchanged)
+```
+
+### Debugging
+
+If something isn't working as expected:
+
+```bash
+# Enable debug mode
+DEBUG_LEFTHOOK=1 git commit -m "test message"
+
+# This will show:
+# Debug: Current branch: feature/test-feature
+# Debug: Original commit message: test message  
+# Debug: Added prefix 'feat' to commit message
+# Debug: New commit message: feat: test message
+```
+
+### Benefits
+
+1. **Consistency**: All commits follow conventional format automatically
+2. **Speed**: No need to remember or type prefixes manually
+3. **Team Alignment**: Shared configuration ensures everyone follows the same pattern
+4. **Release Automation**: Works seamlessly with our Release Please automation
+5. **Optional**: Team members can choose to use it or stick to manual prefixes
+
 ## 🧪 Testing
 
 ### Running Tests
