@@ -1,6 +1,8 @@
 # gh-wizard 🔮
 A magical GitHub CLI extension that creates repositories using template repositories with an intuitive, create-next-app style interface.
 
+> ✨ **Now with automatic conventional commits!** Use `make setup` to enable git hooks for effortless commit formatting.
+
 [![Release](https://img.shields.io/github/v/release/Yuki-Sakaguchi/gh-wizard)](https://github.com/Yuki-Sakaguchi/gh-wizard/releases)
 
 ![result](https://github.com/user-attachments/assets/fb5e10b0-8390-42f7-995d-db69b61b9373)
