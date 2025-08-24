@@ -92,52 +92,52 @@ func formatDescriptionForTerminal(description string) string {
 	if description == "" {
 		return "No description available"
 	}
-	
+
 	termWidth := getTerminalWidth()
 	// Calculate actual prompt width instead of using fixed 40
 	promptWidth := calculatePromptWidth()
-	
+
 	// More aggressive optimization: reduce template option buffer based on actual content
 	// Most template names are shorter than expected
-	baseTemplateBuffer := 20  // Reduced from 35
+	baseTemplateBuffer := 20 // Reduced from 35
 	templateOptionBuffer := baseTemplateBuffer
-	
+
 	// For mixed language content, be even more generous with space allocation
 	if containsCJKCharacters(description) {
 		// Even more aggressive for CJK content - they need more space per character
-		templateOptionBuffer = 15  // Further reduced for CJK
+		templateOptionBuffer = 15 // Further reduced for CJK
 	}
-	
+
 	availableWidth := termWidth - promptWidth - templateOptionBuffer
-	
+
 	// Ensure we have reasonable minimum space for the description
 	minWidth := 25
 	if containsCJKCharacters(description) {
-		minWidth = 35  // CJK characters need more minimum space
+		minWidth = 35 // CJK characters need more minimum space
 	}
-	
+
 	if availableWidth < minWidth {
 		availableWidth = minWidth
 	}
-	
+
 	currentWidth := getStringDisplayWidth(description)
 	if currentWidth <= availableWidth {
 		return description
 	}
-	
+
 	// Truncate by runes, not bytes, considering display width
 	ellipsis := "..."
 	ellipsisWidth := getStringDisplayWidth(ellipsis)
 	targetWidth := availableWidth - ellipsisWidth
-	
+
 	if targetWidth <= 0 {
 		return ellipsis
 	}
-	
+
 	runes := []rune(description)
 	result := ""
 	currentDisplayWidth := 0
-	
+
 	for _, r := range runes {
 		runeWidth := runewidth.RuneWidth(r)
 		if currentDisplayWidth+runeWidth > targetWidth {
@@ -146,20 +146,19 @@ func formatDescriptionForTerminal(description string) string {
 		result += string(r)
 		currentDisplayWidth += runeWidth
 	}
-	
+
 	return result + ellipsis
 }
-
 
 // formatDescriptionForTerminalWithTemplates formats description with actual template display widths
 func formatDescriptionForTerminalWithTemplates(description string, templates []models.Template) string {
 	if description == "" {
 		return "No description available"
 	}
-	
+
 	termWidth := getTerminalWidth()
 	promptWidth := calculatePromptWidth()
-	
+
 	// Calculate the actual maximum width of formatted template display
 	// Template is displayed as: "nextjs-starter - Description here"
 	maxTemplateDisplayWidth := 0
@@ -170,50 +169,50 @@ func formatDescriptionForTerminalWithTemplates(description string, templates []m
 			maxTemplateDisplayWidth = displayWidth
 		}
 	}
-	
+
 	// Add buffer for the separator " - " and some spacing
-	templateDisplayBuffer := maxTemplateDisplayWidth + 3  // 3 for " - "
-	
+	templateDisplayBuffer := maxTemplateDisplayWidth + 3 // 3 for " - "
+
 	availableWidth := termWidth - promptWidth - templateDisplayBuffer
-	
+
 	// Ensure we have reasonable minimum space for the description
 	minWidth := 20
 	if containsCJKCharacters(description) {
 		minWidth = 25
 	}
-	
+
 	if availableWidth < minWidth {
 		availableWidth = minWidth
 	}
-	
+
 	// Debug output
 	if os.Getenv("DEBUG_DESCRIPTION") == "1" {
 		currentWidth := getStringDisplayWidth(description)
 		isCJK := containsCJKCharacters(description)
-		
-		fmt.Printf("\n[DEBUG] Terminal: %d, Prompt: %d, MaxTemplateDisplay: %d, Buffer: %d, Available: %d, Description: %d, CJK: %t\n", 
+
+		fmt.Printf("\n[DEBUG] Terminal: %d, Prompt: %d, MaxTemplateDisplay: %d, Buffer: %d, Available: %d, Description: %d, CJK: %t\n",
 			termWidth, promptWidth, maxTemplateDisplayWidth, templateDisplayBuffer, availableWidth, currentWidth, isCJK)
 		fmt.Printf("[DEBUG] Description: %s\n", description)
 	}
-	
+
 	currentWidth := getStringDisplayWidth(description)
 	if currentWidth <= availableWidth {
 		return description
 	}
-	
+
 	// Truncate by runes, not bytes, considering display width
 	ellipsis := "..."
 	ellipsisWidth := getStringDisplayWidth(ellipsis)
 	targetWidth := availableWidth - ellipsisWidth
-	
+
 	if targetWidth <= 0 {
 		return ellipsis
 	}
-	
+
 	runes := []rune(description)
 	result := ""
 	currentDisplayWidth := 0
-	
+
 	for _, r := range runes {
 		runeWidth := runewidth.RuneWidth(r)
 		if currentDisplayWidth+runeWidth > targetWidth {
@@ -222,7 +221,7 @@ func formatDescriptionForTerminalWithTemplates(description string, templates []m
 		result += string(r)
 		currentDisplayWidth += runeWidth
 	}
-	
+
 	return result + ellipsis
 }
 
@@ -231,11 +230,11 @@ func containsCJKCharacters(s string) bool {
 	for _, r := range s {
 		// Check for CJK Unified Ideographs, Hiragana, Katakana, and other CJK ranges
 		if (r >= 0x4E00 && r <= 0x9FFF) || // CJK Unified Ideographs
-		   (r >= 0x3040 && r <= 0x309F) || // Hiragana
-		   (r >= 0x30A0 && r <= 0x30FF) || // Katakana
-		   (r >= 0xAC00 && r <= 0xD7AF) || // Hangul (Korean)
-		   (r >= 0x3100 && r <= 0x312F) || // Bopomofo
-		   (r >= 0x31A0 && r <= 0x31BF) {  // Bopomofo Extended
+			(r >= 0x3040 && r <= 0x309F) || // Hiragana
+			(r >= 0x30A0 && r <= 0x30FF) || // Katakana
+			(r >= 0xAC00 && r <= 0xD7AF) || // Hangul (Korean)
+			(r >= 0x3100 && r <= 0x312F) || // Bopomofo
+			(r >= 0x31A0 && r <= 0x31BF) { // Bopomofo Extended
 			return true
 		}
 	}
@@ -250,30 +249,29 @@ func clearPreviousLines(lineCount int) {
 	}
 }
 
-
 // formatDescription formats template description with truncation (legacy function for tests)
 func formatDescription(description string, maxLength int) string {
 	if description == "" {
 		return "No description available"
 	}
-	
+
 	currentWidth := getStringDisplayWidth(description)
 	if currentWidth <= maxLength {
 		return description
 	}
-	
+
 	ellipsis := "..."
 	ellipsisWidth := getStringDisplayWidth(ellipsis)
 	targetWidth := maxLength - ellipsisWidth
-	
+
 	if targetWidth <= 0 {
 		return ellipsis
 	}
-	
+
 	runes := []rune(description)
 	result := ""
 	currentDisplayWidth := 0
-	
+
 	for _, r := range runes {
 		runeWidth := runewidth.RuneWidth(r)
 		if currentDisplayWidth+runeWidth > targetWidth {
@@ -282,7 +280,7 @@ func formatDescription(description string, maxLength int) string {
 		result += string(r)
 		currentDisplayWidth += runeWidth
 	}
-	
+
 	return result + ellipsis
 }
 
@@ -400,20 +398,20 @@ func (qf *QuestionFlow) ExecuteCreateNextAppStyle() (*models.ProjectConfig, erro
 	// 1. Template selection (if templates are available)
 	if len(qf.templates) > 0 {
 		templateQuestion := qf.CreateQuestions()[0]
-		
+
 		var templateAnswer struct {
 			Template string `survey:"template"`
 		}
-		
+
 		err := survey.AskOne(templateQuestion.Prompt, &templateAnswer.Template, survey.WithValidator(templateQuestion.Validate))
 		if err != nil {
 			return nil, fmt.Errorf("failed to execute template selection: %w", err)
 		}
 		qf.answers.Template = templateAnswer.Template
-		
+
 		// Clear only the select prompt question line
 		clearPreviousLines(1)
-		
+
 		// Show completed template selection
 		selectedTemplate := qf.findSelectedTemplate()
 		templateName := "None"
@@ -428,12 +426,12 @@ func (qf *QuestionFlow) ExecuteCreateNextAppStyle() (*models.ProjectConfig, erro
 		Message: "What is your project named?",
 		Help:    "Alphanumeric characters, hyphens, and underscores are allowed",
 	}
-	
+
 	err := survey.AskOne(projectNamePrompt, &qf.answers.ProjectName, survey.WithValidator(survey.Required))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get project name: %w", err)
 	}
-	
+
 	// Clear the input question line
 	clearPreviousLines(1)
 	fmt.Printf("✓ What is your project named? … %s\n", qf.answers.ProjectName)
@@ -443,12 +441,12 @@ func (qf *QuestionFlow) ExecuteCreateNextAppStyle() (*models.ProjectConfig, erro
 		Message: "Enter project description (optional):",
 		Help:    "Brief description of the project",
 	}
-	
+
 	err = survey.AskOne(descPrompt, &qf.answers.Description)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get project description: %w", err)
 	}
-	
+
 	// Clear the input question line
 	clearPreviousLines(1)
 	if qf.answers.Description != "" {
@@ -463,12 +461,12 @@ func (qf *QuestionFlow) ExecuteCreateNextAppStyle() (*models.ProjectConfig, erro
 		Default: false,
 		Help:    "If No, project will be created locally only",
 	}
-	
+
 	err = survey.AskOne(githubPrompt, &qf.answers.CreateGitHub)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get GitHub preference: %w", err)
 	}
-	
+
 	// Clear the confirmation question line
 	clearPreviousLines(1)
 	githubAnswer := "No"
@@ -484,12 +482,12 @@ func (qf *QuestionFlow) ExecuteCreateNextAppStyle() (*models.ProjectConfig, erro
 			Default: true,
 			Help:    "Private: Only you can access / Public: Anyone can access",
 		}
-		
+
 		err = survey.AskOne(privatePrompt, &qf.answers.IsPrivate)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get repository privacy preference: %w", err)
 		}
-		
+
 		// Clear the confirmation question line
 		clearPreviousLines(1)
 		privateAnswer := "Public"

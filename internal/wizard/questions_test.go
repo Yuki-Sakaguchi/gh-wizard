@@ -253,7 +253,7 @@ func TestFormatDescription(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := formatDescription(tt.description, tt.maxLength)
 			assert.Equal(t, tt.expected, result)
-			
+
 			// Ensure result doesn't exceed maxLength
 			assert.LessOrEqual(t, len(result), tt.maxLength)
 		})
@@ -285,8 +285,8 @@ func TestFormatDescriptionForTerminal(t *testing.T) {
 			description: "これは日本語の説明文です。とても長い説明文になっています。",
 			expected: func(result string) bool {
 				// Should be truncated and end with "..."
-				return len(result) < len("これは日本語の説明文です。とても長い説明文になっています。") && 
-					   result[len(result)-3:] == "..."
+				return len(result) < len("これは日本語の説明文です。とても長い説明文になっています。") &&
+					result[len(result)-3:] == "..."
 			},
 		},
 		{
@@ -413,7 +413,7 @@ func TestCalculatePromptWidth(t *testing.T) {
 func TestClearPreviousLines(t *testing.T) {
 	// Test that clearPreviousLines doesn't panic with different line counts
 	testCases := []int{0, 1, 2, 5, 10}
-	
+
 	for _, lineCount := range testCases {
 		t.Run(fmt.Sprintf("lineCount_%d", lineCount), func(t *testing.T) {
 			// Should not panic

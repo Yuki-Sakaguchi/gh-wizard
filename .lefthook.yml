@@ -1,0 +1,61 @@
+# Lefthook configuration for gh-wizard
+# Automatic conventional commit prefix generation based on branch name
+# 
+# Usage:
+# 1. Install lefthook: brew install lefthook (or go install github.com/evilmartians/lefthook@latest)
+# 2. Setup hooks: lefthook install
+# 3. Create feature branch and commit normally - prefixes will be added automatically!
+#
+# Branch patterns:
+# - feature/* or feat/* → feat:
+# - fix/* or bugfix/* → fix:
+# - docs/* → docs:
+# - refactor/* → refactor:
+# - test/* → test:
+# - chore/* → chore:
+# - perf/* → perf:
+# - ci/* → ci:
+# - build/* → build:
+# - style/* → style:
+
+commit-msg:
+  commands:
+    conventional-prefix:
+      run: scripts/add-conventional-prefix.sh {1}
+      stage_fixed: false
+      
+pre-commit:
+  commands:
+    # Run Go tests
+    go-test:
+      glob: "*.go"
+      run: go test ./...
+      fail_text: "Go tests failed. Please fix the failing tests before committing."
+      
+    # Run Go formatting
+    go-fmt:
+      glob: "*.go" 
+      run: |
+        if [ -n "$(gofmt -l .)" ]; then
+          echo "Go code is not formatted. Running gofmt..."
+          gofmt -w .
+          git add .
+        fi
+      stage_fixed: true
+      
+    # Check Go modules
+    go-mod:
+      glob: "{go.mod,go.sum}"
+      run: |
+        go mod tidy
+        if [ -n "$(git diff --name-only go.mod go.sum)" ]; then
+          git add go.mod go.sum
+        fi
+      stage_fixed: true
+
+# Skip lefthook for specific scenarios
+skip_output:
+  - meta
+  - success
+
+source_dir: "."
