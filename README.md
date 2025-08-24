@@ -18,8 +18,25 @@ A magical GitHub CLI extension that creates repositories using template reposito
 
 ### Installation
 
+#### Option 1: Simple Installation
 ```bash
 gh extension install Yuki-Sakaguchi/gh-wizard
+```
+
+#### Option 2: Complete Setup (Recommended)
+Auto-installs extension + optional git hooks for automatic conventional commits:
+
+```bash
+# Clone and run setup script
+git clone https://github.com/Yuki-Sakaguchi/gh-wizard.git
+cd gh-wizard
+./scripts/setup.sh
+```
+
+Or using Make:
+```bash
+make setup  # Install extension + git hooks
+make dev    # Development setup with tests
 ```
 
 ## 🎯 Usage Examples
