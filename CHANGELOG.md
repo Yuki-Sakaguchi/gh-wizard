@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1](https://github.com/Yuki-Sakaguchi/gh-wizard/compare/v1.2.0...v1.2.1) (2025-08-24)
+
+
+### 🐛 Bug Fixes
+
+* enhance release workflow for reliable binary generation ([9ae1e35](https://github.com/Yuki-Sakaguchi/gh-wizard/commit/9ae1e3562d1e47ad9436d2a23486f036b2bcae87))
+
 ## [1.2.0](https://github.com/Yuki-Sakaguchi/gh-wizard/compare/v1.1.0...v1.2.0) (2025-08-24)
 
 
