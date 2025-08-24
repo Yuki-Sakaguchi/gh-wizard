@@ -171,6 +171,44 @@ To make your repositories discoverable by gh-wizard:
 3. Check "Template repository" under Repository template
 4. Add descriptive topics for better categorization
 
+## 🚀 Release Automation
+
+This project uses automated semantic versioning and releases powered by [Release Please](https://github.com/googleapis/release-please).
+
+### How It Works
+
+1. **Conventional Commits**: All commits must follow [Conventional Commits](https://www.conventionalcommits.org/) format
+2. **Automatic Versioning**: Version bumps are determined by commit types:
+   - `feat:` → Minor version bump (1.0.0 → 1.1.0)
+   - `fix:` → Patch version bump (1.0.0 → 1.0.1) 
+   - `feat!:` or `BREAKING CHANGE:` → Major version bump (1.0.0 → 2.0.0)
+3. **Release PR Creation**: When commits are pushed to main, Release Please creates a release PR
+4. **Automated Release**: When the release PR is merged, a new release is automatically created with:
+   - Updated CHANGELOG.md
+   - Git tag creation
+   - Cross-platform binary builds
+   - GitHub release publication
+
+### Release Workflow
+
+```mermaid
+graph LR
+    A[Commit to main] --> B[Release Please PR]
+    B --> C[PR Merged]
+    C --> D[Tag Created]
+    D --> E[Binaries Built]
+    E --> F[GitHub Release]
+```
+
+### Manual Releases (Backward Compatible)
+
+You can still create manual releases by pushing tags:
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
@@ -182,7 +220,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 3. Make your changes
 4. Add tests for your changes
 5. Run tests (`go test ./...`)
-6. Commit using conventional commits
+6. Commit using [Conventional Commits](https://www.conventionalcommits.org/) format
 7. Push and create a Pull Request
 
 ## 📄 License

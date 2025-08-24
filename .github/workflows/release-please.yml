@@ -1,0 +1,37 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: google-github-actions/release-please-action@v4
+        id: release
+        with:
+          # Use default configuration file path: release-please-config.json
+          # Use default manifest file path: .release-please-manifest.json
+          # The action will automatically detect these files in the repository root
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # This job will be triggered only when a release is created by release-please
+  # It will call the existing release.yml workflow to build and publish binaries
+  trigger-release-build:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger release workflow
+        run: |
+          echo "Release created with tag: ${{ needs.release-please.outputs.tag_name }}"
+          echo "The existing release.yml workflow will be automatically triggered by the release publication."
