@@ -1,9 +1,13 @@
 name: release
 
 on:
+  # Support both manual tag pushes (for backward compatibility)
   push:
     tags:
       - "v*"
+  # Support release-please created releases
+  release:
+    types: [published]
 
 permissions:
   contents: write
