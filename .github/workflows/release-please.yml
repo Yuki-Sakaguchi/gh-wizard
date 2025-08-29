@@ -19,15 +19,13 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: google-github-actions/release-please-action@v4
+      - uses: googleapis/release-please-action@v4
         id: release
         with:
           # Use default configuration file path: release-please-config.json
           # Use default manifest file path: .release-please-manifest.json
           # The action will automatically detect these files in the repository root
-          # Use PAT to avoid GitHub Actions bot limitations
-          # This allows the release creation to trigger other workflows
-          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # This job will be triggered only when a release is created by release-please
   # It will call the existing release.yml workflow to build and publish binaries
