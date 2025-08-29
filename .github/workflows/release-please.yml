@@ -25,9 +25,9 @@ jobs:
           # Use default configuration file path: release-please-config.json
           # Use default manifest file path: .release-please-manifest.json
           # The action will automatically detect these files in the repository root
-          token: ${{ secrets.GITHUB_TOKEN }}
-          # If above fails, you can create a Personal Access Token with repo scope
-          # and use it instead: token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          # Use PAT to avoid GitHub Actions bot limitations
+          # This allows the release creation to trigger other workflows
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
   # This job will be triggered only when a release is created by release-please
   # It will call the existing release.yml workflow to build and publish binaries
