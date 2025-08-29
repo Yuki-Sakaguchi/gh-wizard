@@ -52,9 +52,6 @@ func Execute() {
 }
 
 func runWizard(cmd *cobra.Command, args []string) error {
-	// Show immediate loading indication
-	fmt.Println("🔮 Starting GitHub Repository Wizard...")
-	
 	// Setup signal handling
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
