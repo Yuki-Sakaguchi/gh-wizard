@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0](https://github.com/Yuki-Sakaguchi/gh-wizard/compare/v1.3.0...v1.4.0) (2025-08-29)
+
+
+### 🚀 Features
+
+* add spinner loading indicator for template repository fetching ([83f1feb](https://github.com/Yuki-Sakaguchi/gh-wizard/commit/83f1febfed25e8afdfbf3831204dcd9ef6bf2fdd)), closes [#49](https://github.com/Yuki-Sakaguchi/gh-wizard/issues/49)
+* コマンド実行時のローディング表示を追加 ([#49](https://github.com/Yuki-Sakaguchi/gh-wizard/issues/49)) ([b0b2619](https://github.com/Yuki-Sakaguchi/gh-wizard/commit/b0b2619b9467e4841aebad05daa0f703f0f14607))
+
+
+### 🐛 Bug Fixes
+
+* remove unnecessary startup message ([67a10f1](https://github.com/Yuki-Sakaguchi/gh-wizard/commit/67a10f1c19a9cc39bf400e0d8aef642f7ea50b6c))
+* resolve Release Please workflow trigger limitations ([e43270a](https://github.com/Yuki-Sakaguchi/gh-wizard/commit/e43270a96a242242d82d91278b28e99739e2b594))
+* resolve release-please workflow token error ([524302c](https://github.com/Yuki-Sakaguchi/gh-wizard/commit/524302c041f8b9bed63e6dfd68d9c2eb1d075491))
+
 ## [1.3.0](https://github.com/Yuki-Sakaguchi/gh-wizard/compare/v1.2.1...v1.3.0) (2025-08-24)
 
 
