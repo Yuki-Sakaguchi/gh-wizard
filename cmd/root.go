@@ -16,6 +16,7 @@ import (
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/github"
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/models"
 	"github.com/Yuki-Sakaguchi/gh-wizard/internal/wizard"
+	"github.com/briandowns/spinner"
 	"github.com/spf13/cobra"
 )
 
@@ -76,9 +77,15 @@ func runWizard(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Fetch user's template repositories
-	fmt.Println("🔍 Fetching your template repositories...")
+	// Create spinner for loading indication (14th style as requested)
+	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+	s.Suffix = " Fetching your template repositories..."
+	s.Start()
+
 	templates, templateErr := runner.githubClient.SearchPopularTemplates(ctx)
+	
+	s.Stop()
+	
 	if templateErr != nil {
 		// Continue without templates if fetching fails
 		fmt.Printf("⚠️  Failed to fetch templates: %v\n", templateErr)
