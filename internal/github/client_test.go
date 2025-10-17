@@ -82,7 +82,7 @@ func TestMockCilent_GetUserTemplates_ErrorScenarios(t *testing.T) {
 	}{
 		{
 			name:          "network error",
-			mockError:     models.NewWizardError(models.ErrNetworkError, "connection failed", errors.New("dial failed")),
+			mockError:     models.NewGitHubError("connection failed", errors.New("dial failed")),
 			expectedError: "connection failed",
 		},
 		{
@@ -92,7 +92,7 @@ func TestMockCilent_GetUserTemplates_ErrorScenarios(t *testing.T) {
 		},
 		{
 			name:          "no templates found",
-			mockError:     models.NewWizardError(models.ErrNoTemplatesFound, "no templates found", nil),
+			mockError:     models.NewGitHubError("no templates found", nil),
 			expectedError: "no templates found",
 		},
 	}

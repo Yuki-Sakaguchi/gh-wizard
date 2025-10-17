@@ -102,7 +102,7 @@ func TestSimpleMockClient_Scenarios(t *testing.T) {
 		{
 			name: "template error",
 			setupMock: func(m *SimpleMockClient) {
-				m.TemplateError = models.NewWizardError(models.ErrNoTemplatesFound, "no templates", nil)
+				m.TemplateError = models.NewGitHubError("no templates", nil)
 			},
 			expectError:     true,
 			expectTemplates: 0,
