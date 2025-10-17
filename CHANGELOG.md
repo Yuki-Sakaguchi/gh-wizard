@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1](https://github.com/Yuki-Sakaguchi/gh-wizard/compare/v1.4.0...v1.4.1) (2025-10-17)
+
+
+### ♻️ Code Refactoring
+
+* remove legacy ErrorCode constants ([09a6b5a](https://github.com/Yuki-Sakaguchi/gh-wizard/commit/09a6b5a69252274faef0d776c1795c8b7fb35875))
+* remove unused helper functions from client.go ([a5c4e06](https://github.com/Yuki-Sakaguchi/gh-wizard/commit/a5c4e0675acaadd0633db27ce6666bf7197389ce))
+* remove unused methods from Template struct ([b8e146d](https://github.com/Yuki-Sakaguchi/gh-wizard/commit/b8e146dde9ac79c2aa1462b71d90baed85c26e18))
+
+
+### 🧪 Tests
+
+* fix client_test.go error scenarios ([e46f820](https://github.com/Yuki-Sakaguchi/gh-wizard/commit/e46f820e16fd3c7f284bdd6af30d352120b5f71c))
+* fix tests after removing unused code ([fd362a8](https://github.com/Yuki-Sakaguchi/gh-wizard/commit/fd362a869e524aa7055116e0477eac5f69ef7d3d))
+
 ## [1.4.0](https://github.com/Yuki-Sakaguchi/gh-wizard/compare/v1.3.0...v1.4.0) (2025-08-29)
 
 
