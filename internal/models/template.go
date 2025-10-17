@@ -39,23 +39,3 @@ func (t Template) GetDisplayName() string {
 	return result
 }
 
-// GetShortDescription returns shortened description
-func (t Template) GetShortDescription() string {
-	if t.Description == "" {
-		return "No description"
-	}
-	if len(t.Description) > 72 {
-		return t.Description[:72] + "..."
-	}
-	return t.Description
-}
-
-// GetRepoURL returns repository URL
-func (t Template) GetRepoURL() string {
-	return "https://github.com/" + t.FullName
-}
-
-// GetIsPublic returns whether the repository is public
-func (t Template) GetIsPublic() bool {
-	return !t.Private
-}
